@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/press-start-2p": "^5.1.0",
+    "@fontsource/vt323": "^5.1.0",
     "@game/core": "*",
     "@game/games": "*",
     "@react-three/fiber": "^8.17.10",

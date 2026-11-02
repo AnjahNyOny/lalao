@@ -3,10 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { GameViewProps } from '../types';
+import { connect4Scene as scene } from './theme';
 
-export const DISC_COLORS = ['#ff6b6b', '#ffc93c'] as const;
-
-const BOARD_COLOR = '#3d6fd9';
+const DISC_COLORS = scene.discs;
 const HOLE_R = 0.4;
 const DISC_R = 0.37;
 const DEPTH = 0.5;
@@ -97,12 +96,12 @@ function Board({ state, myDisc, onPlay }: { state: Connect4State; myDisc: Disc |
   return (
     <group position={[0, BOARD_Y, 0]}>
       <mesh geometry={geometry} castShadow receiveShadow>
-        <meshStandardMaterial color={BOARD_COLOR} flatShading roughness={0.6} />
+        <meshStandardMaterial color={scene.board} flatShading roughness={0.6} />
       </mesh>
       {[-1, 1].map((side) => (
         <mesh key={side} position={[side * (BOARD_W / 2 - 0.35), -BOARD_H / 2 - 0.1, 0]} castShadow>
           <boxGeometry args={[0.7, 0.5, 1.8]} />
-          <meshStandardMaterial color="#2f57b0" flatShading />
+          <meshStandardMaterial color={scene.boardFeet} flatShading />
         </mesh>
       ))}
 
@@ -159,7 +158,7 @@ function Ground() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <circleGeometry args={[60, 12]} />
-      <meshStandardMaterial color="#9fd49a" flatShading />
+      <meshStandardMaterial color={scene.ground} flatShading />
     </mesh>
   );
 }
@@ -173,8 +172,8 @@ export function Connect4View({ view, me, room, act }: GameViewProps) {
   return (
     <div className="game-stage">
       <Canvas shadows dpr={[1, 2]} camera={{ fov: 42 }}>
-        <color attach="background" args={['#bfe3f5']} />
-        <hemisphereLight args={['#fff8ec', '#7fae7a', 1.4]} />
+        <color attach="background" args={[scene.sky]} />
+        <hemisphereLight args={[scene.hemiSky, scene.hemiGround, 1.4]} />
         <directionalLight
           position={[5, 12, 8]}
           intensity={2.2}

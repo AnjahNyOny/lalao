@@ -142,6 +142,14 @@ export class Connection {
 const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 export const connection = new Connection(wsUrl);
 
+// Test hook for scripts/verify. Grants nothing a player couldn't already send over the socket.
+declare global {
+  interface Window {
+    __lalao?: { state: () => ClientState; act: (action: unknown) => void; start: () => void };
+  }
+}
+window.__lalao = { state: connection.getState, act: (a) => connection.act(a), start: () => connection.start() };
+
 export function useClient(): ClientState {
   return useSyncExternalStore(connection.subscribe, connection.getState);
 }

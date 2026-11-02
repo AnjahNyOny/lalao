@@ -1,5 +1,6 @@
 import type { PlayerId, RoomInfo } from '@game/core';
 import type { ComponentType } from 'react';
+import type { Theme } from '../theme/theme';
 
 export interface GameViewProps {
   /** Whatever the game's `viewFor` (or full state) sends this player. */
@@ -11,5 +12,7 @@ export interface GameViewProps {
 
 export interface GameClient {
   emoji: string;
+  /** Applied to the whole UI from the room lobby onwards. */
+  theme: Theme;
   View: ComponentType<GameViewProps>;
 }

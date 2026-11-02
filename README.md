@@ -9,6 +9,7 @@ npm install
 npm run dev        # serveur (port 3000) + client Vite (port 5173), accessible sur le Wi-Fi
 npm test           # tests de la logique des jeux et des salons
 npm run typecheck
+npm run verify     # vraie partie dans Chrome (mobile + desktop), captures dans artifacts/verify/
 npm run build && npm start   # mode « hôte local » : un seul serveur sur le port 3000
 ```
 

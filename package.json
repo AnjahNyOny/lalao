@@ -11,11 +11,13 @@
     "build": "npm run build -w @game/client",
     "start": "npm run start -w @game/server",
     "test": "vitest run",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "npm run build && tsx scripts/verify/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
     "concurrently": "^9.1.0",
+    "playwright-core": "^1.48.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
   }

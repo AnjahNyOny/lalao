@@ -1,10 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
+import { gameClients } from './games';
 import { useClient } from './net/connection';
 import { Home } from './screens/Home';
 import { RoomScreen } from './screens/RoomScreen';
+import { arcadeTheme } from './theme/arcade';
+import { applyTheme } from './theme/theme';
 
 export function App() {
   const { connected, me, room, game, error } = useClient();
+
+  // Lalao's arcade look on the menu; each game's own look once in a room.
+  const theme = (room && gameClients[room.gameId]?.theme) || arcadeTheme;
+  useLayoutEffect(() => applyTheme(theme), [theme]);
 
   // Keep ?room=CODE in the address bar so the page can be shared or reloaded.
   const code = room?.code;
