@@ -1,16 +1,12 @@
 import type { GameDefinition, PlayerId } from '@game/core';
+import { COLS, ROWS, cellIndex, dropRow, findLine, type Board, type Disc } from './board';
+import { connect4Bot } from './bot';
 
-export const COLS = 7;
-export const ROWS = 6;
-const ALIGN = 4;
-
-/** Index into `players`. */
-export type Disc = 0 | 1;
+export * from './board';
 
 export interface Connect4State {
   players: [PlayerId, PlayerId];
-  /** `row * COLS + col`, row 0 at the bottom. */
-  board: (Disc | null)[];
+  board: Board;
   turn: Disc;
   moves: number;
   last: { col: number; row: number } | null;
@@ -21,32 +17,6 @@ export interface Connect4State {
 
 export interface Connect4Action {
   col: number;
-}
-
-export const cellIndex = (col: number, row: number) => row * COLS + col;
-
-export function dropRow(board: Connect4State['board'], col: number): number {
-  for (let row = 0; row < ROWS; row++) if (board[cellIndex(col, row)] === null) return row;
-  return -1;
-}
-
-function findLine(board: Connect4State['board'], col: number, row: number): number[] | null {
-  const disc = board[cellIndex(col, row)];
-  const at = (c: number, r: number) => c >= 0 && c < COLS && r >= 0 && r < ROWS && board[cellIndex(c, r)] === disc;
-  for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
-    const line = [cellIndex(col, row)];
-    for (const sign of [1, -1]) {
-      let c = col + dc * sign;
-      let r = row + dr * sign;
-      while (at(c, r)) {
-        line.push(cellIndex(c, r));
-        c += dc * sign;
-        r += dr * sign;
-      }
-    }
-    if (line.length >= ALIGN) return line;
-  }
-  return null;
 }
 
 export const connect4: GameDefinition<Connect4State, Connect4Action> = {
@@ -90,6 +60,8 @@ export const connect4: GameDefinition<Connect4State, Connect4Action> = {
       turn: winLine ? state.turn : ((1 - state.turn) as Disc),
     };
   },
+
+  bot: connect4Bot,
 
   result(state) {
     if (state.winner !== null) return { kind: 'win', winners: [state.players[state.winner]] };

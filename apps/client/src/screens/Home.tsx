@@ -1,5 +1,7 @@
+import { BOT_LEVELS, type BotLevel } from '@game/core';
 import { games } from '@game/games';
 import { useState } from 'react';
+import { BOT_LABELS } from '../botLabels';
 import { gameClients } from '../games';
 import { connection } from '../net/connection';
 import { ArcadeBackdrop } from '../theme/ArcadeBackdrop';
@@ -17,6 +19,8 @@ function storedName(): string {
 export function Home() {
   const [name, setName] = useState(storedName);
   const [code, setCode] = useState(() => new URLSearchParams(location.search).get('room')?.toUpperCase() ?? '');
+  const [solo, setSolo] = useState(false);
+  const [level, setLevel] = useState<BotLevel>('medium');
   const ready = name.trim().length > 0;
 
   const remember = () => {
@@ -68,24 +72,44 @@ export function Home() {
 
         <section className="card">
           <h2>Choisis un jeu</h2>
+          <div className="segmented mode" role="radiogroup" aria-label="Mode de jeu">
+            <button role="radio" aria-checked={!solo} onClick={() => setSolo(false)}>
+              Entre amis
+            </button>
+            <button role="radio" aria-checked={solo} onClick={() => setSolo(true)}>
+              Solo vs bots
+            </button>
+          </div>
+          {solo && (
+            <div className="segmented level" role="radiogroup" aria-label="Niveau des bots">
+              {BOT_LEVELS.map((l) => (
+                <button key={l} role="radio" aria-checked={level === l} onClick={() => setLevel(l)}>
+                  {BOT_LABELS[l]}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="game-grid">
-            {Object.values(games).map((g) => (
-              <button
-                key={g.id}
-                className="game-tile"
-                disabled={!ready}
-                onClick={() => {
-                  remember();
-                  connection.create(name, g.id);
-                }}
-              >
-                <span className="game-emoji">{gameClients[g.id]?.emoji ?? '🎲'}</span>
-                <span className="game-name">{g.name}</span>
-                <span className="game-players">
-                  {g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}–${g.maxPlayers}`} joueurs
-                </span>
-              </button>
-            ))}
+            {Object.values(games)
+              .filter((g) => !solo || g.bot)
+              .map((g) => (
+                <button
+                  key={g.id}
+                  className="game-tile"
+                  disabled={!ready}
+                  onClick={() => {
+                    remember();
+                    if (solo) connection.playSolo(name, g.id, level);
+                    else connection.create(name, g.id);
+                  }}
+                >
+                  <span className="game-emoji">{gameClients[g.id]?.emoji ?? '🎲'}</span>
+                  <span className="game-name">{g.name}</span>
+                  <span className="game-players">
+                    {solo ? 'contre des bots' : `${g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}–${g.maxPlayers}`} joueurs`}
+                  </span>
+                </button>
+              ))}
           </div>
         </section>
 

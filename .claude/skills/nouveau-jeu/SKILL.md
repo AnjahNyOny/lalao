@@ -33,6 +33,15 @@ Modèle de référence : `packages/games/src/connect4/index.ts`.
 
 Au minimum : la mise en place, un coup normal, chaque condition de victoire, l'égalité si elle est possible, et les refus (hors tour, action malformée, coup illégal, coup après la fin). Ajouter `viewFor` (ce qui ne doit **pas** fuiter) si le jeu en a un. `npm test` doit passer avant de toucher à la vue.
 
+## 2 bis. Bot — `packages/games/src/<id>/bot.ts`
+
+Modèle : `connect4/bot.ts`. Se branche via `bot` sur la `GameDefinition` ; sans bot, le jeu n'apparaît pas en mode solo.
+
+- Le bot reçoit **la vue du joueur** (`viewFor`), pas l'état complet : il ne triche pas. Il renvoie `null` quand ce n'est pas à lui de jouer.
+- Hasard : uniquement le `rand` fourni.
+- Trois niveaux qui se ressentent : `easy` (rate souvent l'évidence), `medium` (gagne et bloque, évite les pièges immédiats), `hard` (recherche : minimax ou heuristique forte). Viser moins de 50 ms par coup sur un Mac, soit environ 200 ms sur un téléphone.
+- Tests : toujours un coup légal jusqu'à la fin de partie, à tous les niveaux ; prend une victoire immédiate ; bloque une menace ; `hard` bat nettement `easy` sur une dizaine de parties.
+
 ## 3. Vue — `apps/client/src/games/<id>/<Id>View.tsx`
 
 Modèle de référence : `apps/client/src/games/connect4/Connect4View.tsx`. Props : `GameViewProps` (`view`, `me`, `room`, `act`).

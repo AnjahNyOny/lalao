@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Lobby } from './lobby';
 import type { ServerMessage } from './protocol';
 import type { GameDefinition } from './types';
@@ -20,6 +20,7 @@ const race: GameDefinition<{ players: string[]; scores: number[]; turn: number }
     const i = s.scores.findIndex((v) => v >= 3);
     return i >= 0 ? { kind: 'win', winners: [s.players[i]] } : null;
   },
+  bot: (s, me) => (s.players[s.turn] === me ? { add: 1 } : null),
 };
 
 function client(lobby: Lobby) {
@@ -100,5 +101,66 @@ describe('Lobby', () => {
     const room = b.last('room')!.room;
     expect(room.players).toHaveLength(1);
     expect(room.hostId).toBe(b.last('welcome')!.playerId);
+  });
+});
+
+describe('bots', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const setup = () => {
+    vi.useFakeTimers();
+    const lobby = new Lobby({ race }, 60_000, { botDelayMs: [10, 10] });
+    const host = client(lobby);
+    host.session.receive({ t: 'create', name: 'Alice', gameId: 'race' });
+    return { lobby, host, me: host.last('welcome')!.playerId };
+  };
+
+  it('lets the host add and remove a bot in the lobby', () => {
+    const { host } = setup();
+    host.session.receive({ t: 'addBot', level: 'hard' });
+    const bot = host.last('room')!.room.players[1];
+    expect(bot).toMatchObject({ bot: 'hard', connected: true });
+    expect(bot.name).toMatch(/🤖/);
+
+    host.session.receive({ t: 'addBot', level: 'easy' });
+    expect(host.last('error')!.message).toMatch(/complet/);
+
+    host.session.receive({ t: 'removeBot', playerId: bot.id });
+    expect(host.last('room')!.room.players).toHaveLength(1);
+  });
+
+  it('refuses bots from guests and malformed levels', () => {
+    const { lobby, host } = setup();
+    const guest = client(lobby);
+    guest.session.receive({ t: 'join', code: host.last('welcome')!.code, name: 'Bob' });
+    guest.session.receive({ t: 'addBot', level: 'easy' });
+    expect(guest.last('error')!.message).toMatch(/hôte/);
+    host.session.receive({ t: 'addBot', level: 'godlike' });
+    expect(host.last('error')!.message).toMatch(/invalide/);
+  });
+
+  it('plays its turns by itself until the game ends, and again on rematch', () => {
+    const { host, me } = setup();
+    host.session.receive({ t: 'addBot', level: 'medium' });
+    host.session.receive({ t: 'start' });
+
+    for (let round = 0; round < 2; round++) {
+      for (let i = 0; i < 10 && !host.last('game')!.result; i++) {
+        const view = host.last('game')!.view as { players: string[]; turn: number };
+        if (view.players[view.turn] === me) host.session.receive({ t: 'action', action: { add: 1 } });
+        else vi.advanceTimersByTime(10);
+      }
+      expect(host.last('game')!.result?.kind).toBe('win');
+      host.session.receive({ t: 'start' });
+    }
+  });
+
+  it('does not keep a room alive with only bots in it', () => {
+    const { lobby, host } = setup();
+    host.session.receive({ t: 'addBot', level: 'easy' });
+    host.session.receive({ t: 'start' });
+    host.session.close();
+    vi.advanceTimersByTime(60_000);
+    expect(lobby.roomCount).toBe(0);
   });
 });

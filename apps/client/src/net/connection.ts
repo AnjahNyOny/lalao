@@ -1,4 +1,5 @@
-import type { ClientMessage, GameResult, PlayerId, RoomInfo, ServerMessage } from '@game/core';
+import { Lobby, type BotLevel, type ClientMessage, type GameResult, type PlayerId, type RoomInfo, type ServerMessage, type Session } from '@game/core';
+import { games } from '@game/games';
 import { useSyncExternalStore } from 'react';
 
 export interface ClientState {
@@ -43,6 +44,10 @@ export class Connection {
   private session = load();
   private pendingName = '';
   private errorTimer: ReturnType<typeof setTimeout> | undefined;
+  private wsConnected = false;
+  /** Solo games run a Lobby right here in the page: no server, no network. */
+  private local: Session | null = null;
+  private localLobby: Lobby | null = null;
 
   constructor(private url: string) {
     this.open();
@@ -73,13 +78,41 @@ export class Connection {
     this.send({ t: 'action', action });
   }
 
+  addBot(level: BotLevel): void {
+    this.send({ t: 'addBot', level });
+  }
+
+  removeBot(playerId: PlayerId): void {
+    this.send({ t: 'removeBot', playerId });
+  }
+
+  /** Starts a game against bots straight away, entirely offline. */
+  playSolo(name: string, gameId: string, level: BotLevel): void {
+    this.pendingName = name;
+    this.localLobby ??= new Lobby(games);
+    // Async and JSON round-tripped, like the network, so solo can't hide bugs online play would hit.
+    this.local = this.localLobby.connect({
+      send: (msg) => queueMicrotask(() => this.handle(JSON.parse(JSON.stringify(msg)))),
+    });
+    this.set({ connected: true });
+    this.send({ t: 'create', name, gameId });
+    for (let i = 1; i < games[gameId].minPlayers; i++) this.send({ t: 'addBot', level });
+    this.send({ t: 'start' });
+  }
+
   leave(): void {
     this.send({ t: 'leave' });
+    if (this.local) {
+      this.local.close();
+      this.local = null;
+    }
     this.forgetRoom();
+    this.set({ connected: this.wsConnected });
   }
 
   private send(msg: ClientMessage): void {
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+    if (this.local) this.local.receive(JSON.parse(JSON.stringify(msg)));
+    else if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
     else this.queue.push(msg);
   }
 
@@ -87,7 +120,8 @@ export class Connection {
     const ws = new WebSocket(this.url);
     this.ws = ws;
     ws.onopen = () => {
-      this.set({ connected: true });
+      this.wsConnected = true;
+      if (!this.local) this.set({ connected: true });
       // Resume our seat before anything else.
       if (this.session) {
         const { code, name, token } = this.session;
@@ -95,9 +129,12 @@ export class Connection {
       }
       for (const msg of this.queue.splice(0)) ws.send(JSON.stringify(msg));
     };
-    ws.onmessage = (e) => this.handle(JSON.parse(e.data) as ServerMessage);
+    ws.onmessage = (e) => {
+      if (!this.local) this.handle(JSON.parse(e.data) as ServerMessage);
+    };
     ws.onclose = () => {
-      this.set({ connected: false });
+      this.wsConnected = false;
+      if (!this.local) this.set({ connected: false });
       setTimeout(() => this.open(), RETRY_MS);
     };
   }
@@ -105,8 +142,11 @@ export class Connection {
   private handle(msg: ServerMessage): void {
     switch (msg.t) {
       case 'welcome':
-        this.session = { code: msg.code, token: msg.token, name: this.session?.code === msg.code ? this.session.name : this.pendingName };
-        save(this.session);
+        // Solo rooms die with the page, so there is nothing to resume after a reload.
+        if (!this.local) {
+          this.session = { code: msg.code, token: msg.token, name: this.session?.code === msg.code ? this.session.name : this.pendingName };
+          save(this.session);
+        }
         this.set({ me: msg.playerId });
         return;
       case 'room':

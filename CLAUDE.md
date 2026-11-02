@@ -31,6 +31,8 @@ Règles qui tiennent l'architecture :
 - **Information cachée** (mains, pioches) : filtrer avec `viewFor`. Une vue ne doit jamais contenir ce que le joueur n'a pas le droit de voir.
 - Le client ne réimplémente pas les règles : il affiche la vue reçue. Pour un retour immédiat, préférer une anticipation visuelle (jeton fantôme…) à une prédiction d'état.
 - `window.__lalao` (client) expose l'état et `act` pour les tests automatisés.
+- **Bots** : `GameDefinition.bot(view, me, level, rand)`, joués par `Room` après un délai (700 à 1200 ms). Ce sont des membres sans transport : ils ne gardent pas un salon vivant à eux seuls.
+- **Solo hors ligne** : `connection.playSolo` fait tourner un `Lobby` dans la page (aucun serveur). Les messages passent quand même par un aller-retour JSON asynchrone, pour se comporter comme le réseau.
 
 ## Ajouter un jeu
 

@@ -1,4 +1,4 @@
-import type { GameResult, PlayerId } from './types';
+import { BOT_LEVELS, type BotLevel, type GameResult, type PlayerId } from './types';
 
 export type RoomStatus = 'lobby' | 'playing' | 'finished';
 
@@ -7,6 +7,7 @@ export interface PlayerInfo {
   name: string;
   seat: number;
   connected: boolean;
+  bot?: BotLevel;
 }
 
 export interface RoomInfo {
@@ -23,6 +24,9 @@ export type ClientMessage =
   /** Host only: starts the game, or a rematch once finished. */
   | { t: 'start' }
   | { t: 'action'; action: unknown }
+  /** Host only, in the lobby. */
+  | { t: 'addBot'; level: BotLevel }
+  | { t: 'removeBot'; playerId: PlayerId }
   | { t: 'leave' };
 
 export type ServerMessage =
@@ -51,6 +55,10 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
       return { t: m.t };
     case 'action':
       return { t: 'action', action: m.action };
+    case 'addBot':
+      return BOT_LEVELS.includes(m.level as BotLevel) ? { t: 'addBot', level: m.level as BotLevel } : null;
+    case 'removeBot':
+      return isString(m.playerId) ? { t: 'removeBot', playerId: m.playerId } : null;
     default:
       return null;
   }

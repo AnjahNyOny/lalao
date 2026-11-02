@@ -1,6 +1,6 @@
 import { parseClientMessage, type ClientMessage } from './protocol';
 import { randomId } from './random';
-import { Room, RoomError, type Member, type Transport } from './room';
+import { Room, RoomError, type Member, type RoomOptions, type Transport } from './room';
 import type { GameRegistry, PlayerId } from './types';
 
 // No I/O/0/1: codes get read aloud and typed on phones.
@@ -17,6 +17,7 @@ export class Lobby {
   constructor(
     readonly games: GameRegistry,
     private emptyRoomTtlMs = 60_000,
+    private roomOptions: RoomOptions = {},
   ) {}
 
   connect(transport: Transport): Session {
@@ -33,7 +34,7 @@ export class Lobby {
     let code: string;
     do code = randomId(4, CODE_ALPHABET);
     while (this.rooms.has(code));
-    const room = new Room(code, game);
+    const room = new Room(code, game, this.roomOptions);
     this.rooms.set(code, room);
     return room;
   }
@@ -109,6 +110,16 @@ export class Session {
         return this.requireRoom().start(this.playerId!);
       case 'action':
         return this.requireRoom().action(this.playerId!, msg.action);
+      case 'addBot': {
+        const room = this.requireRoom();
+        room.addBot(this.playerId!, msg.level);
+        return room.broadcastRoom();
+      }
+      case 'removeBot': {
+        const room = this.requireRoom();
+        room.removeBot(this.playerId!, msg.playerId);
+        return room.broadcastRoom();
+      }
       case 'leave':
         this.close();
         this.transport.send({ t: 'left' });

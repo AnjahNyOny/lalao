@@ -82,7 +82,11 @@ async function newPlayer(browser: Browser, label: string, mobile: boolean): Prom
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const url = m.location().url;
+    errors.push(url ? `${m.text()} (${url.replace(URL_BASE, '/')})` : m.text());
+  });
   return { page, label, errors };
 }
 
@@ -91,6 +95,42 @@ const lalao = (p: Player) =>
     const s = window.__lalao!.state();
     return { me: s.me, room: s.room, game: s.game };
   });
+
+/** Solo against bots with the browser offline: the room runs inside the page. */
+async function verifySolo(browser: Browser, gameId: string): Promise<void> {
+  const game = games[gameId];
+  const choose = scenarios[gameId];
+  if (!game.bot || !choose) return;
+  const dir = path.join(OUT, gameId);
+  const p = await newPlayer(browser, 'mobile', true);
+  // Fonts load lazily: let everything arrive before cutting the network.
+  await p.page.goto(URL_BASE, { waitUntil: 'networkidle' });
+  await p.page.context().setOffline(true);
+  await p.page.fill('input', 'Solo');
+  await p.page.click('button:has-text("Solo vs bots")');
+  await p.page.click('.segmented.level button:has-text("Difficile")');
+  await p.page.screenshot({ path: path.join(dir, '5-solo-menu-mobile.png') });
+  await p.page.click(`.game-tile:has-text("${game.name}")`);
+  await p.page.waitForSelector('canvas');
+
+  let result = null;
+  let mine = 0;
+  for (let i = 0; i < MAX_TURNS * 4 && !result; i++) {
+    const s = await lalao(p);
+    result = s.game?.result ?? null;
+    const action = !result && s.game && s.me ? choose(s.game.view, s.me) : null;
+    if (action !== null) {
+      await p.page.evaluate((a) => window.__lalao!.act(a), action);
+      mine++;
+    }
+    await p.page.waitForTimeout(150);
+  }
+  report(!!result, 'solo hors ligne : partie terminée contre le bot', result ? `${JSON.stringify(result.kind)} après ${mine} coups du joueur` : 'bloqué');
+  await p.page.waitForTimeout(1200);
+  await p.page.screenshot({ path: path.join(dir, '5-solo-resultat-mobile.png') });
+  report(p.errors.length === 0, 'solo : console sans erreur', p.errors.slice(0, 3).join(' | '));
+  await p.page.context().close();
+}
 
 async function verifyGame(browser: Browser, gameId: string): Promise<void> {
   const game = games[gameId];
@@ -118,6 +158,16 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
   await host.page.click(`.game-tile:has-text("${game.name}")`);
   await host.page.waitForSelector('.room-code');
   const code = (await host.page.textContent('.room-code'))!.trim();
+
+  if (game.bot) {
+    const count = () => host.page.evaluate(() => window.__lalao!.state().room!.players.length);
+    await host.page.click('.add-bot button:has-text("Moyen")');
+    await host.page.waitForFunction(() => window.__lalao!.state().room!.players.some((p) => p.bot === 'medium'));
+    await shot(host, '2-salon-bot');
+    await host.page.click('.remove-bot');
+    await host.page.waitForFunction(() => window.__lalao!.state().room!.players.length === 1);
+    report((await count()) === 1, 'bot ajouté puis retiré dans le salon');
+  }
 
   for (const [i, g] of guests.entries()) {
     await g.page.goto(`${URL_BASE}?room=${code}`);
@@ -194,6 +244,7 @@ try {
   for (const id of ids) {
     try {
       await verifyGame(browser, id);
+      await verifySolo(browser, id);
     } catch (e) {
       report(false, `${id} : exception`, (e as Error).message.split('\n')[0]);
     }

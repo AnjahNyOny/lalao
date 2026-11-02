@@ -1,7 +1,8 @@
-import type { GameResult, PlayerId, RoomInfo } from '@game/core';
+import { BOT_LEVELS, type GameResult, type PlayerId, type RoomInfo } from '@game/core';
 import { games } from '@game/games';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
+import { BOT_LABELS } from '../botLabels';
 import { gameClients } from '../games';
 import { connection } from '../net/connection';
 
@@ -47,6 +48,12 @@ function Waiting({ room, me }: { room: RoomInfo; me: PlayerId }) {
             {p.name}
             {p.id === room.hostId && <span className="tag">hôte</span>}
             {p.id === me && <span className="tag">toi</span>}
+            {p.bot && <span className="tag">bot {BOT_LABELS[p.bot].toLowerCase()}</span>}
+            {p.bot && isHost && (
+              <button className="remove-bot" aria-label={`Retirer ${p.name}`} onClick={() => connection.removeBot(p.id)}>
+                ✕
+              </button>
+            )}
           </li>
         ))}
         {Array.from({ length: game.maxPlayers - room.players.length }, (_, i) => (
@@ -55,6 +62,19 @@ function Waiting({ room, me }: { room: RoomInfo; me: PlayerId }) {
           </li>
         ))}
       </ul>
+
+      {isHost && game.bot && room.players.length < game.maxPlayers && (
+        <div className="add-bot">
+          <span className="muted">Ajouter un bot</span>
+          <div className="segmented">
+            {BOT_LEVELS.map((level) => (
+              <button key={level} onClick={() => connection.addBot(level)}>
+                {BOT_LABELS[level]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isHost ? (
         <button className="primary" disabled={!canStart} onClick={() => connection.start()}>
