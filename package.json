@@ -12,7 +12,8 @@
     "start": "npm run start -w @game/server",
     "test": "vitest run",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "verify": "npm run build && tsx scripts/verify/run.ts"
+    "verify": "npm run build && tsx scripts/verify/run.ts",
+    "verify:online": "VERIFY_URL=https://lalao.anjahnyony.com tsx scripts/verify/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

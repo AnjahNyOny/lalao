@@ -18,7 +18,9 @@ import { scenarios } from './scenarios';
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const OUT = path.join(ROOT, 'artifacts/verify');
 const PORT = 3199;
-const URL_BASE = `http://localhost:${PORT}/`;
+/** VERIFY_URL=https://lalao.anjahnyony.com plays against the deployed site instead of a local server. */
+const REMOTE = process.env.VERIFY_URL;
+const URL_BASE = REMOTE ? REMOTE.replace(/\/?$/, '/') : `http://localhost:${PORT}/`;
 const MAX_TURNS = 400;
 
 const MOBILE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
@@ -236,12 +238,13 @@ const ids = requested.length ? requested : Object.keys(games);
 for (const id of ids) if (!games[id]) throw new Error(`Jeu inconnu : ${id}`);
 
 rmSync(OUT, { recursive: true, force: true });
-const stopServer = await startServer();
+const stopServer = REMOTE ? () => {} : await startServer();
 const browser = await chromium.launch({
   channel: process.env.CHROME_PATH ? undefined : 'chrome',
   executablePath: process.env.CHROME_PATH,
   // Software WebGL so it also runs headless without a GPU.
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  // VERIFY_CHROME_ARGS adds flags, e.g. --host-resolver-rules while a new DNS record propagates.
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', ...(process.env.VERIFY_CHROME_ARGS ?? '').split(/\s+(?=--)/).filter(Boolean)],
 });
 try {
   for (const id of ids) {

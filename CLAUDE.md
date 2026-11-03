@@ -13,6 +13,7 @@ npm run typecheck
 npm run verify       # build + vraie partie dans Chrome, captures mobile/desktop -> artifacts/verify/
 npm run build && npm start   # un seul serveur :3000 = mode hôte local
 scripts/deploy.sh    # mise en ligne sur https://lalao.anjahnyony.com (--rollback pour revenir en arrière)
+npm run verify:online   # les mêmes vraies parties, contre le site en ligne
 ```
 
 ## Architecture
