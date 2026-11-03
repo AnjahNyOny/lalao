@@ -85,7 +85,7 @@ function ScatterPart({ part, items, lift }: { part: Part; items: Placement[]; li
     const q = new THREE.Quaternion();
     items.forEach((it, i) => {
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), it.rot);
-      m.compose(new THREE.Vector3(it.x, lift, it.z), q, new THREE.Vector3(it.scale, it.scale, it.scale));
+      m.compose(new THREE.Vector3(it.x, lift, it.z), q, new THREE.Vector3(it.scale, it.scale * (it.sy ?? 1), it.scale));
       ref.current.setMatrixAt(i, m);
     });
     ref.current.instanceMatrix.needsUpdate = true;

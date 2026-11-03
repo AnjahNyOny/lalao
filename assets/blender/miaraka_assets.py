@@ -34,6 +34,12 @@ PALETTE.update({
     'CrocBelly': '#c9c08a',
     'Crack': '#3b3633',
     'Orchid': '#f4f0e6',
+    'DryLeaf': '#9c9a4a',
+    'Olive': '#6f7a3a',
+    'Rotten': '#6b5a48',
+    'BatFur': '#4a3a30',
+    'BatWing': '#2b2420',
+    'Earth': '#7a6142',
 })
 
 COLLECTION = 'Miaraka'
@@ -254,9 +260,96 @@ def pad():
     return a
 
 
+def planks():
+    """Rotten planks over a gap, top at ground level: they hold a maki, not a zebu."""
+    a = Asset('planks')
+    rng = random.Random(11)
+    for i in range(6):
+        if i == 3:
+            continue  # a board already gone
+        y = -0.42 + i * 0.168
+        a.cube('Rotten' if i % 2 else 'BarkGrey', (rng.uniform(-0.04, 0.04), y, -0.03), (0.98 - rng.random() * 0.16, 0.14, 0.05),
+               rot=(0, 0, rng.uniform(-0.07, 0.07)))
+    for x in (-0.42, 0.42):
+        a.cube('WoodDark', (x, 0, -0.09), (0.06, 1.0, 0.06))
+    a.ball('Moss', (0.25, -0.25, 0.0), (0.09, 0.06, 0.02), sub=0)
+    return a
+
+
+def bat():
+    """A fruit bat's body, facing -Y, origin at its middle; the wings are separate, to flap."""
+    a = Asset('bat')
+    a.ball('BatFur', (0, 0, 0), (0.08, 0.13, 0.07), sub=1)
+    a.ball('BatFur', (0, -0.14, 0.03), (0.065, 0.065, 0.06), sub=1)
+    a.cube('BatFur', (0, -0.2, 0.02), (0.04, 0.05, 0.03))
+    for s in (-1, 1):
+        a.cyl('BatFur', (s * 0.035, -0.14, 0.1), 0.025, 0.0, 0.07, seg=4)
+        a.ball('Amber', (s * 0.028, -0.195, 0.045), (0.012, 0.012, 0.012), sub=0)
+    return a
+
+
+def bat_wing():
+    """The right wing, hinged at the body (origin): the game mirrors it for the left one."""
+    a = Asset('bat_wing')
+    # A flat membrane in the XY plane, a little thick so it shows from above and below.
+    outline = [(0.04, -0.07), (0.46, -0.14), (0.42, 0.0), (0.4, 0.08), (0.26, 0.04), (0.24, 0.11), (0.1, 0.06), (0.05, 0.08)]
+    t = 0.008
+    verts = [(x, y, t) for x, y in outline] + [(x, y, -t) for x, y in outline]
+    n = len(outline)
+    faces = [tuple(range(n)), tuple(range(2 * n - 1, n - 1, -1))] + [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    a.poly('BatWing', verts, faces, (0, 0, 0))
+    a.along('BatFur', (0.04, -0.07, 0.01), (0.46, -0.14, 0.01), 0.014, 0.006, seg=4)
+    return a
+
+
+def lantern():
+    """The maki's lantern: a copper cage; the game lights the flame inside."""
+    a = Asset('lantern')
+    a.cyl('Copper', (0, 0, 0.02), 0.075, 0.075, 0.04, seg=8)
+    a.cyl('Copper', (0, 0, 0.21), 0.04, 0.075, 0.05, seg=8)
+    for k in range(4):
+        ang = k / 4 * math.tau + math.pi / 4
+        a.cube('Copper', (math.cos(ang) * 0.062, math.sin(ang) * 0.062, 0.12), (0.014, 0.014, 0.18))
+    a.cyl('Copper', (0, 0, 0.27), 0.012, 0.012, 0.08, seg=4)
+    a.cyl('Copper', (0, 0, 0.32), 0.03, 0.03, 0.012, seg=8)
+    return a
+
+
+def bush(name, seed):
+    """Kirindy's dry forest: knotted trunks under olive leaves, a cell wide."""
+    a = Asset(name)
+    rng = random.Random(seed)
+    a.cube('Earth', (0, 0, 0.08), (1.0, 1.0, 0.16))
+    for i in range(3):
+        x, y = rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25)
+        a.cyl('Bark', (x, y, 0.55), 0.08, 0.05, 1.1, seg=6, rot=(rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15), 0))
+    for i in range(7):
+        x, y = rng.uniform(-0.22, 0.22), rng.uniform(-0.22, 0.22)
+        z = 0.75 + rng.random() * 0.95
+        r = 0.26 + rng.random() * 0.12
+        a.ball(('Olive', 'DryLeaf', 'LeafDark')[i % 3], (x, y, z), (r, r, r * 0.8), sub=1, rot=(0, 0, rng.random() * 3))
+    return a
+
+
+def reeds():
+    """Stones and reeds in the shallows: where a crate pushed in stays put."""
+    a = Asset('reeds')
+    rng = random.Random(5)
+    for i in range(6):
+        a.ball('Rock' if i % 2 else 'Sand', (rng.uniform(-0.38, 0.38), rng.uniform(-0.38, 0.38), -0.4), (0.15, 0.12, 0.08), sub=0,
+               rot=(0, 0, rng.random() * 3))
+    for i in range(8):
+        x, y = rng.uniform(-0.44, 0.44), rng.uniform(-0.44, 0.44)
+        h = 0.55 + rng.random() * 0.4
+        a.cyl('Leaf' if i % 2 else 'Moss', (x, y, -0.5 + h / 2), 0.022, 0.0, h, seg=4,
+              rot=(rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25), 0))
+    return a
+
+
 BUILDERS = [
     lambda: wall('wall_a', 1), lambda: wall('wall_b', 2), ledge, cracked, rubble, gate, bridge, plate, heavy_plate,
     lever_base, lever_arm, crate, key, door, door_frame, pod, cairn, croc, chest_base, chest_lid, pad,
+    planks, bat, bat_wing, lantern, lambda: bush('bush_a', 5), lambda: bush('bush_b', 9), reeds,
 ]
 
 

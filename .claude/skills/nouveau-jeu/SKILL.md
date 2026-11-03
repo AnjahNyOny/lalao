@@ -26,7 +26,7 @@ Modèle de référence : `packages/games/src/connect4/index.ts`.
 - `validate` vérifie le tour **et** la forme de l'action (`typeof`, `Number.isInteger`, bornes). Il renvoie `false` si la partie est finie.
 - `apply` est pur : il copie et ne mute jamais `state`.
 - Hasard : `mulberry32(seed)` de `@game/core`. Si le hasard intervient pendant la partie (dés…), stocker l'état du générateur dans `State`.
-- Temps réel : `tick(state, dtMs)` est appelé à 20 Hz par le serveur ; le client interpole. Modèle : `miaraka/` (physique partagée `step`, positions envoyées par chaque appareil puis vérifiées, parcours de solution pour les tests et `verify`).
+- Temps réel : `tick(state, dtMs)` est appelé à 20 Hz par le serveur ; le client interpole. Modèle : `miaraka/` (physique partagée `step`, positions envoyées par chaque appareil puis vérifiées, niveaux en texte, un parcours de solution par niveau pour les tests et `verify`).
 - Si le jeu a plusieurs façons de jouer ou de finir (durée, mode), les déclarer dans `options` : l'hôte les choisit dans le salon, `setup(players, seed, options)` les reçoit. Le modèle est `TSENA_OPTIONS`. Une limite de temps passe par `clock(state, ms)`, jamais par `Date.now()` dans les règles.
 - Si les joueurs choisissent une pièce ou un pion, les lister dans `pieces` ; le client fournit `pieceImage` (voir Tsena et ses vignettes rendues dans Blender).
 - Enregistrer le jeu dans `packages/games/src/index.ts`.

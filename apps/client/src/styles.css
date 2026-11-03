@@ -1618,13 +1618,29 @@ input::placeholder {
   color: #7fb0f0;
 }
 
+.miaraka-who {
+  min-width: 0;
+}
+
+.miaraka-who > span,
+.miaraka-stats > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miaraka-stats,
+.miaraka-map {
+  flex: none;
+}
+
 .miaraka-stats .hurry {
   color: #ff8a7a;
 }
 
 .miaraka-map {
   margin-left: auto;
-  width: min(34vw, 170px);
+  width: min(30vw, 170px);
   border-radius: 8px;
   border: var(--card-border);
   box-shadow: var(--card-shadow);
@@ -1711,4 +1727,48 @@ input::placeholder {
   position: fixed;
   inset: 40% 16px auto;
   text-align: center;
+}
+
+/* A level's name as it starts, the treasure as it's found: under the hint, clear of the two animals. */
+.miaraka-banner {
+  position: fixed;
+  left: 50%;
+  top: calc(max(84px, calc(env(safe-area-inset-top) + 76px)) + 74px);
+  transform: translateX(-50%);
+  transform-origin: top center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 18px;
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  text-align: center;
+  pointer-events: none;
+  animation: miaraka-banner 0.5s ease-out;
+}
+
+.miaraka-banner strong {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--accent);
+}
+
+.miaraka-banner span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+@keyframes miaraka-banner {
+  from {
+    transform: translateX(-50%) scale(0.85);
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+  }
 }

@@ -1,60 +1,59 @@
-import { cellIndex, LEVELS, levelSize, vanillaTotal, type MiarakaAction, type MiarakaState, type Role } from '@game/games/miaraka';
+import { LEVELS, levelSize, NEXT_MS, vanillaTotal, type MiarakaAction, type MiarakaState, type Role } from '@game/games/miaraka';
 import { memo, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { ErrorBoundary, hasWebGL } from '../../ui/ErrorBoundary';
 import type { GameViewProps } from '../types';
 import { useControls } from './controls';
+import { hintFor } from './hints';
 import { Scene } from './Scene';
-import { tsingy } from './theme';
+import { LOOKS, tsingy } from './theme';
 
-const level = LEVELS[0];
-const { w: W, h: H } = levelSize(level);
 const NAMES: Record<Role, string> = { maki: 'Maki', zebu: 'Zébu' };
 const ACTION: Record<Role, string> = { maki: 'Sauter', zebu: 'Foncer' };
 const touchScreen = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+/** How long a level's name stays up as it starts. */
+const INTRO_MS = 3500;
+/** In the dark, the map shows what the lantern has lit so far. */
+const SEEN_RADIUS = 4;
 
-/** What to do next, for this animal, from where the pair has got to. */
-export function hintFor(s: MiarakaState, role: Role): string {
-  if (s.won) return 'Le trésor des Tsingy est à vous deux !';
-  if (s.lost) return 'Le temps est écoulé… On réessaie ?';
-  const zebu = role === 'zebu';
-  const croc = s.crocs.some((c) => s.avatars.some((a) => Math.hypot(a.x - c.x, a.z - c.z) < 3)) && !s.crocs.every((c) => c.stun > 0);
-  if (croc) return zebu ? 'Le crocodile ! Fonce sur lui pour l’étourdir.' : 'Le crocodile ! Attends qu’il s’éloigne, ou que le zébu l’étourdisse.';
-  if (!s.broken.includes(cellIndex(level, 7, 7)))
-    return zebu ? 'Fonce dans le mur fissuré pour ouvrir le passage.' : 'Seul le zébu casse le mur fissuré. En attendant, saute cueillir la vanille sur les rochers !';
-  if (!s.levers.includes('b'))
-    return zebu
-      ? 'Monte sur la dalle aux cornes et restes-y : la palissade s’ouvre pour le maki.'
-      : s.open.includes('a')
-        ? 'Passe la palissade, puis grimpe tirer le levier sur les rochers.'
-        : 'La palissade ne s’ouvre que sous le poids du zébu, sur la dalle aux cornes.';
-  if (!s.open.includes('c'))
-    return zebu ? 'Fonce dans la caisse pour la pousser sur la dalle : le pont descendra.' : 'Tiens la dalle près de la rivière pour le zébu, ou saute par-dessus l’eau !';
-  if (s.keys === 0 && s.doors.length === 0) return 'Une clé brille en haut des rochers : seul le maki peut sauter la chercher.';
-  if (s.doors.length === 0) return 'Apportez la clé à la porte du trésor.';
-  return 'Chacun sur un socle, en même temps : le trésor s’ouvre !';
-}
-
-/** The level from above: walls, water, and the two of you. */
-const MinimapBase = memo(function MinimapBase() {
-  const cells = useMemo(() => {
-    const out: { x: number; z: number; c: string }[] = [];
-    level.rows.forEach((row, z) => [...row].forEach((c, x) => (c === '#' || c === '~') && out.push({ x, z, c })));
-    return out;
-  }, []);
+/** The level from above: walls and water, only where you've been if it's dark. */
+const MinimapBase = memo(function MinimapBase({ level, seen }: { level: number; seen: Set<number> | null; version: number }) {
+  const l = LEVELS[level];
+  const look = LOOKS[l.look];
+  const { w } = levelSize(l);
+  const cells: { x: number; z: number; c: string }[] = [];
+  l.rows.forEach((row, z) =>
+    [...row].forEach((c, x) => {
+      if ('#~-I'.includes(c) && (!seen || seen.has(z * w + x))) cells.push({ x, z, c });
+    }),
+  );
   return (
     <>
       {cells.map(({ x, z, c }) => (
-        <rect key={`${x},${z}`} x={x} y={z} width={1.02} height={1.02} fill={c === '#' ? tsingy.wall : tsingy.water} />
+        <rect key={`${x},${z}`} x={x} y={z} width={1.02} height={1.02} fill={c === '#' || c === 'I' ? look.wall : look.water} />
       ))}
     </>
   );
 });
 
 function Minimap({ s, seat }: { s: MiarakaState; seat: number }) {
+  const l = LEVELS[s.level];
+  const { w: W, h: H } = levelSize(l);
+  // Cells lit so far, for this level.
+  const seen = useMemo(() => (l.dark ? new Set<number>() : null), [l]);
+  if (seen) {
+    for (const a of s.avatars) {
+      for (let z = Math.floor(a.z - SEEN_RADIUS); z <= a.z + SEEN_RADIUS; z++) {
+        for (let x = Math.floor(a.x - SEEN_RADIUS); x <= a.x + SEEN_RADIUS; x++) {
+          if (x >= 0 && z >= 0 && x < W && z < H && Math.hypot(x + 0.5 - a.x, z + 0.5 - a.z) < SEEN_RADIUS) seen.add(z * W + x);
+        }
+      }
+    }
+  }
+  const look = LOOKS[l.look];
   return (
     <svg className="miaraka-map" viewBox={`0 0 ${W} ${H}`} aria-label="Carte">
-      <rect width={W} height={H} fill={tsingy.floor[0]} />
-      <MinimapBase />
+      <rect width={W} height={H} fill={l.dark ? '#0d0f11' : look.floor[0]} />
+      <MinimapBase level={s.level} seen={seen} version={seen?.size ?? 0} />
       {s.avatars.map((a, i) => (
         <circle key={i} cx={a.x} cy={a.z} r={i === seat ? 0.9 : 0.75} fill={a.role === 'maki' ? tsingy.maki : tsingy.zebu} stroke="#fff" strokeWidth={0.25} />
       ))}
@@ -107,6 +106,33 @@ const clock = (ms: number) => {
   return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
 };
 
+/** A level's name as it starts (on this screen, however long it took to load), and the treasure as it's found. */
+function Banner({ s }: { s: MiarakaState }) {
+  const l = LEVELS[s.level];
+  const shown = useRef({ level: -1, at: 0 });
+  if (shown.current.level !== s.level) shown.current = { level: s.level, at: Date.now() };
+  if (s.cleared !== null) {
+    const next = LEVELS[s.level + 1];
+    return (
+      <div className="miaraka-banner" key={`clear${s.level}`}>
+        <strong>Trésor trouvé !</strong>
+        <span>
+          🌼 {s.vanilla}/{vanillaTotal(l)} · Ensuite : {next.name} ({clock(NEXT_MS - s.cleared)})
+        </span>
+      </div>
+    );
+  }
+  if (Date.now() - shown.current.at >= INTRO_MS) return null;
+  return (
+    <div className="miaraka-banner" key={`intro${s.level}`}>
+      <span>
+        Niveau {s.level + 1}/{LEVELS.length} · {l.place}
+      </span>
+      <strong>{l.name}</strong>
+    </div>
+  );
+}
+
 export function MiarakaView({ view, me, room, act }: GameViewProps) {
   const s = view as MiarakaState;
   const state = useRef(s);
@@ -117,12 +143,13 @@ export function MiarakaView({ view, me, room, act }: GameViewProps) {
   if (seat < 0) return <main className="screen lobby">Partie à deux : regarde-les jouer.</main>;
   const mine = s.avatars[seat];
   const partner = room.players.find((p) => p.id === s.players[1 - seat])?.name ?? 'ton partenaire';
+  const level = LEVELS[s.level];
 
   return (
-    <div className="game-stage miaraka">
+    <div className="game-stage miaraka" data-look={level.look}>
       {hasWebGL() ? (
         <ErrorBoundary fallback={<p className="miaraka-nogl">Ce jeu a besoin de l’affichage 3D, indisponible sur cet appareil.</p>}>
-          <Scene state={state} seat={seat} controls={controls} act={(a: MiarakaAction) => act(a)} />
+          <Scene state={state} seat={seat} level={s.level} controls={controls} act={(a: MiarakaAction) => act(a)} />
         </ErrorBoundary>
       ) : (
         <p className="miaraka-nogl">Ce jeu a besoin de l’affichage 3D, indisponible sur cet appareil.</p>
@@ -135,13 +162,19 @@ export function MiarakaView({ view, me, room, act }: GameViewProps) {
           </span>
         </div>
         <div className="miaraka-stats">
-          <span title="Vanille">🌼 {s.vanilla}/{vanillaTotal(level)}</span>
-          {s.keys > 0 && <span title="Clé">🔑 {s.keys}</span>}
+          <span title={level.name}>
+            Niv. {s.level + 1}/{LEVELS.length}
+          </span>
+          <span title="Vanille">
+            🌼 {s.vanilla}/{vanillaTotal(level)}
+            {s.keys > 0 && <span title="Clé"> · 🔑 {s.keys}</span>}
+          </span>
           {s.limit !== null && <span className={s.limit - s.time < 60_000 ? 'hurry' : ''}>⏱ {clock(s.limit - s.time)}</span>}
         </div>
         <Minimap s={s} seat={seat} />
       </div>
       <p className="miaraka-hint">{hintFor(s, mine.role)}</p>
+      <Banner s={s} />
       {touch ? (
         <>
           <Stick onMove={setStick} />

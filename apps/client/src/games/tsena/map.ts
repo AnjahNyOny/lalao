@@ -251,6 +251,8 @@ export interface Placement {
   z: number;
   rot: number;
   scale: number;
+  /** Extra vertical stretch. */
+  sy?: number;
 }
 
 /** Scatters `count` objects within `radius` degrees of a spot, on land (or at sea), away from the board. */

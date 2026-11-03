@@ -238,7 +238,12 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
 
   let turns = 0;
   let result = null;
-  while (!result && turns < MAX_TURNS) {
+  // Real-time games send many small moves, quickly; turn-based ones wait for the animations.
+  const budget = game.tick ? MAX_TURNS * 10 : MAX_TURNS;
+  const pause = game.tick ? 40 : 120;
+  // Games played in levels: a screenshot as each new one starts.
+  let level = ((await lalao(host)).game?.view as { level?: number } | undefined)?.level;
+  while (!result && turns < budget) {
     let moved = false;
     for (const p of players) {
       const s = await lalao(p);
@@ -246,10 +251,16 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
         result = s.game.result;
         break;
       }
+      const now = (s.game?.view as { level?: number } | undefined)?.level;
+      if (p === host && now !== undefined && now !== level) {
+        level = now;
+        await host.page.waitForTimeout(1200);
+        for (const q of players.slice(0, 2)) await shot(q, `3-niveau-${now + 1}`);
+      }
       const action = s.game && s.me ? choose(s.game.view, s.me) : null;
       if (action === null) continue;
       await p.page.evaluate((a) => window.__lalao!.act(a), action);
-      await p.page.waitForTimeout(120);
+      await p.page.waitForTimeout(pause);
       moved = true;
       turns++;
     }
