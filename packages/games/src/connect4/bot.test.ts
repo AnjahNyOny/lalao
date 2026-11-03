@@ -27,7 +27,7 @@ function match(first: BotLevel, second: BotLevel, seed: number): BotLevel | 'dra
     s = connect4.apply(s, action, by);
   }
   const r = connect4.result(s)!;
-  return r.kind === 'draw' ? 'draw' : levels[r.winners[0]];
+  return r.kind === 'win' ? levels[r.winners[0]] : 'draw';
 }
 
 describe('connect4 bot', () => {

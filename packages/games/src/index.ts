@@ -1,5 +1,6 @@
 import type { GameRegistry } from '@game/core';
 import { connect4 } from './connect4';
+import { miaraka } from './miaraka';
 import { snakes } from './snakes';
 import { tsena } from './tsena';
 
@@ -8,4 +9,5 @@ export const games: GameRegistry = {
   [connect4.id]: connect4,
   [snakes.id]: snakes,
   [tsena.id]: tsena,
+  [miaraka.id]: miaraka,
 };

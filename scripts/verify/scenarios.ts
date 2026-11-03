@@ -1,5 +1,8 @@
 import type { PlayerId } from '@game/core';
 import { COLS, dropRow, type Connect4State } from '@game/games/connect4';
+import type { MiarakaState } from '@game/games/miaraka';
+// Not part of the package's exports: the level's solution is only for tests and verify.
+import { nextAction, type Progress } from '../../packages/games/src/miaraka/solution';
 import type { SnakesState } from '@game/games/snakes';
 import { BAIL, canBuild, canOffer, priceOf, TAXI_RANGE, type TsenaView } from '@game/games/tsena';
 
@@ -11,6 +14,9 @@ import { BAIL, canBuild, canOffer, priceOf, TAXI_RANGE, type TsenaView } from '@
 export type Chooser = (view: unknown, me: PlayerId) => unknown | null;
 
 const pick = <T>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
+
+/** Real-time co-op: each player follows the level's solution, a stride at a time. */
+const miarakaProgress = new Map<string, Progress>();
 
 export const scenarios: Record<string, Chooser> = {
   connect4: (view, me) => {
@@ -25,6 +31,15 @@ export const scenarios: Record<string, Chooser> = {
     if (s.winner !== null || s.players[s.turn] !== me) return null;
     if (!s.pending) return { type: 'roll' };
     return { type: pick(['erase', 'slide']) };
+  },
+
+  miaraka: (view, me) => {
+    const s = view as MiarakaState;
+    const seat = s.players.indexOf(me);
+    if (s.won || s.lost || seat < 0) return null;
+    // A new game: start the plan again.
+    if (s.time < 1000 || !miarakaProgress.has(me)) miarakaProgress.set(me, { step: 0 });
+    return nextAction(s, seat, miarakaProgress.get(me)!, 0.8);
   },
 
   tsena: (view, me) => {

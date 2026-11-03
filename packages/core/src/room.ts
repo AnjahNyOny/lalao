@@ -141,7 +141,12 @@ export class Room {
     if (n < this.game.minPlayers) throw new RoomError(`Il faut au moins ${this.game.minPlayers} joueurs`);
     if (n > this.game.maxPlayers) throw new RoomError(`${this.game.maxPlayers} joueurs maximum`);
 
-    this.state = this.game.setup(this.members.map((m) => m.id), randomSeed(), { ...this.options });
+    this.state = this.game.setup(
+      this.members.map((m) => m.id),
+      randomSeed(),
+      { ...this.options },
+      this.members.map((m) => m.piece),
+    );
     this.result = null;
     this.status = 'playing';
     if (this.game.tick) {
@@ -167,7 +172,9 @@ export class Room {
     if (this.status !== 'playing') throw new RoomError('Aucune partie en cours');
     if (!this.game.validate(this.state, action, by)) throw new RoomError('Coup invalide');
     this.state = this.game.apply(this.state, action, by);
-    this.changed();
+    // Real-time games send the state on every tick anyway: no extra broadcast per input.
+    if (this.game.tick) this.version++;
+    else this.changed();
   }
 
   dispose(): void {

@@ -1575,3 +1575,140 @@ input::placeholder {
     animation: none;
   }
 }
+
+/* ---------- Miaraka (co-op in the Tsingy, 3D) ---------- */
+
+/* Lobby: dusk over the limestone needles. */
+[data-theme='miaraka'] body {
+  background-image: linear-gradient(180deg, #2f4a3a 0%, #1f3329 60%);
+  background-repeat: no-repeat;
+}
+
+.miaraka-top {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 64px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.miaraka-who,
+.miaraka-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 10px;
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.miaraka-role.maki {
+  color: #f6a54e;
+}
+
+.miaraka-role.zebu {
+  color: #7fb0f0;
+}
+
+.miaraka-stats .hurry {
+  color: #ff8a7a;
+}
+
+.miaraka-map {
+  margin-left: auto;
+  width: min(34vw, 170px);
+  border-radius: 8px;
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.miaraka-hint {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: max(84px, calc(env(safe-area-inset-top) + 76px));
+  width: min(520px, calc(100vw - 32px));
+  margin: 0;
+  padding: 6px 12px;
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+
+.miaraka-keys {
+  position: fixed;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 4px 12px;
+  background: var(--card);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.miaraka-stick {
+  position: fixed;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: max(28px, env(safe-area-inset-bottom));
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  touch-action: none;
+  display: grid;
+  place-items: center;
+}
+
+.miaraka-stick span {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--card);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  pointer-events: none;
+}
+
+.miaraka-action {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(40px, env(safe-area-inset-bottom));
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  touch-action: none;
+  font-size: 17px;
+}
+
+.miaraka-action.maki {
+  background: #f08a24;
+  color: #1f1608;
+  box-shadow: 0 5px 0 #a85a10;
+}
+
+.miaraka-action.zebu {
+  background: #3b7dd8;
+  color: #fff;
+  box-shadow: 0 5px 0 #1f4e94;
+}
+
+.miaraka-nogl {
+  position: fixed;
+  inset: 40% 16px auto;
+  text-align: center;
+}

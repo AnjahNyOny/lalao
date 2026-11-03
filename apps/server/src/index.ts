@@ -18,9 +18,9 @@ const HEARTBEAT_MS = 15_000;
 const MAX_ROOMS = Number(process.env.MAX_ROOMS ?? Infinity);
 const MAX_MESSAGE_BYTES = 16 * 1024;
 const MAX_CONNECTIONS_PER_IP = 40;
-/** Token bucket: a burst of 30 messages, then 10 per second. */
-const RATE_BURST = 30;
-const RATE_PER_SECOND = 10;
+/** Token bucket: a burst of 60 messages, then 30 per second (real-time games send positions ~12 times a second). */
+const RATE_BURST = 60;
+const RATE_PER_SECOND = 30;
 /** A client that keeps flooding after this many dropped messages is cut off. */
 const MAX_DROPPED = 100;
 

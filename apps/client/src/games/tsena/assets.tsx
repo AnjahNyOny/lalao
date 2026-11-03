@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Placement } from './map';
 
-/** Built by assets/blender/tsena_assets.py. */
-const MODELS_URL = '/models/tsena.glb';
+/** Built by assets/blender/tsena_assets.py. Other games pass their own `url`. */
+export const MODELS_URL = '/models/tsena.glb';
 
 // Fetched as soon as the app loads, so a solo game started offline still has its models.
 if (typeof window !== 'undefined') useLoader.preload(GLTFLoader, MODELS_URL);
@@ -18,10 +18,11 @@ interface Part {
 const partsCache = new Map<string, Part[]>();
 
 /** One mesh per material: a model's pieces, positioned around its own origin. */
-function useParts(name: string): Part[] {
-  const gltf = useLoader(GLTFLoader, MODELS_URL);
+function useParts(name: string, url = MODELS_URL): Part[] {
+  const gltf = useLoader(GLTFLoader, url);
   return useMemo(() => {
-    const cached = partsCache.get(name);
+    const key = `${url}#${name}`;
+    const cached = partsCache.get(key);
     if (cached) return cached;
     const root = gltf.scene.getObjectByName(name);
     if (!root) throw new Error(`Modèle introuvable : ${name}`);
@@ -32,9 +33,9 @@ function useParts(name: string): Part[] {
       material.flatShading = true;
       parts.push({ geometry: o.geometry, material });
     });
-    partsCache.set(name, parts);
+    partsCache.set(key, parts);
     return parts;
-  }, [gltf, name]);
+  }, [gltf, name, url]);
 }
 
 const ownerMaterials = new Map<string, THREE.MeshStandardMaterial>();
@@ -54,8 +55,8 @@ function paint(material: THREE.MeshStandardMaterial, color: string | undefined):
 type GroupProps = JSX.IntrinsicElements['group'];
 
 /** A single model from the .glb. `color` repaints its 'Owner' parts. */
-export function Model({ name, color, shadows = true, ...props }: GroupProps & { name: string; color?: string; shadows?: boolean }) {
-  const parts = useParts(name);
+export function Model({ name, url, color, shadows = true, ...props }: GroupProps & { name: string; url?: string; color?: string; shadows?: boolean }) {
+  const parts = useParts(name, url);
   return (
     <group {...props}>
       {parts.map((p, i) => (
@@ -66,8 +67,8 @@ export function Model({ name, color, shadows = true, ...props }: GroupProps & { 
 }
 
 /** Many copies of a model in a few draw calls (one instanced mesh per material). */
-export function Scatter({ name, items, lift = 0 }: { name: string; items: Placement[]; lift?: number }) {
-  const parts = useParts(name);
+export function Scatter({ name, url, items, lift = 0 }: { name: string; url?: string; items: Placement[]; lift?: number }) {
+  const parts = useParts(name, url);
   return (
     <>
       {parts.map((p, i) => (

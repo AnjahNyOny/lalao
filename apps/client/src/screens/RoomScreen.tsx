@@ -163,7 +163,13 @@ function Waiting({ room, me, solo }: { room: RoomInfo; me: PlayerId; solo: boole
 function ResultBanner({ result, room, me }: { result: GameResult; room: RoomInfo; me: PlayerId }) {
   const names = (ids: PlayerId[]) => ids.map((id) => room.players.find((p) => p.id === id)?.name ?? '?').join(' et ');
   const title =
-    result.kind === 'draw' ? 'Match nul !' : result.winners.includes(me) ? 'Victoire !' : `${names(result.winners)} gagne !`;
+    result.kind === 'draw'
+      ? 'Match nul !'
+      : result.kind === 'lose'
+        ? 'Perdu… on réessaie ?'
+        : result.winners.includes(me)
+          ? 'Victoire !'
+          : `${names(result.winners)} gagne !`;
   return (
     <div className="result">
       <h2>{title}</h2>

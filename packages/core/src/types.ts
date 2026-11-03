@@ -5,7 +5,9 @@ export type BotLevel = (typeof BOT_LEVELS)[number];
 
 export type GameResult =
   | { kind: 'win'; winners: PlayerId[] }
-  | { kind: 'draw' };
+  | { kind: 'draw' }
+  /** A cooperative game everyone lost together. */
+  | { kind: 'lose' };
 
 /** One choice the host makes in the lobby before starting: game mode, length… */
 export interface GameOption {
@@ -41,11 +43,15 @@ export interface GameDefinition<State = unknown, Action = unknown, View = State>
   name: string;
   minPlayers: number;
   maxPlayers: number;
-  /** Players are given in seat order. `seed` drives all randomness. `options` holds every declared option. */
-  setup(players: PlayerId[], seed: number, options?: GameOptions): State;
+  /**
+   * Players are given in seat order. `seed` drives all randomness. `options`
+   * holds every declared option, `pieces` each seat's piece (for games whose
+   * pieces are roles, not just looks).
+   */
+  setup(players: PlayerId[], seed: number, options?: GameOptions, pieces?: (string | undefined)[]): State;
   /** Choices offered in the lobby; `setup` receives them. */
   options?: GameOption[];
-  /** Pieces players choose from in the lobby. The rules never see them: the view reads them from the room. */
+  /** Pieces players choose from in the lobby: `setup` gets each seat's, the view reads them from the room. */
   pieces?: GamePiece[];
   /** `action` comes straight off the network: check its shape too. */
   validate(state: State, action: unknown, by: PlayerId): action is Action;
