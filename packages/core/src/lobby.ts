@@ -18,6 +18,8 @@ export class Lobby {
     readonly games: GameRegistry,
     private emptyRoomTtlMs = 60_000,
     private roomOptions: RoomOptions = {},
+    /** A public server caps how many rooms can be open at once. */
+    private maxRooms = Infinity,
   ) {}
 
   connect(transport: Transport): Session {
@@ -31,6 +33,7 @@ export class Lobby {
   createRoom(gameId: string): Room {
     const game = this.games[gameId];
     if (!game) throw new RoomError('Jeu inconnu');
+    if (this.rooms.size >= this.maxRooms) throw new RoomError('Le serveur est plein, réessaie dans un moment');
     let code: string;
     do code = randomId(4, CODE_ALPHABET);
     while (this.rooms.has(code));

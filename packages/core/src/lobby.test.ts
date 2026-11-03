@@ -92,6 +92,15 @@ describe('Lobby', () => {
     expect(c.last('error')!.message).toMatch(/complet/);
   });
 
+  it('refuses new rooms once the server is full', () => {
+    const lobby = new Lobby({ race }, 60_000, {}, 1);
+    const [a, b] = [client(lobby), client(lobby)];
+    a.session.receive({ t: 'create', name: 'A', gameId: 'race' });
+    b.session.receive({ t: 'create', name: 'B', gameId: 'race' });
+    expect(b.last('error')!.message).toMatch(/plein/);
+    expect(lobby.roomCount).toBe(1);
+  });
+
   it('hands host to the next player when the host leaves the lobby', () => {
     const lobby = new Lobby({ race });
     const [a, b] = [client(lobby), client(lobby)];

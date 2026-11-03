@@ -12,6 +12,7 @@ npm test             # vitest : règles des jeux + salons
 npm run typecheck
 npm run verify       # build + vraie partie dans Chrome, captures mobile/desktop -> artifacts/verify/
 npm run build && npm start   # un seul serveur :3000 = mode hôte local
+scripts/deploy.sh    # mise en ligne sur https://lalao.anjahnyony.com (--rollback pour revenir en arrière)
 ```
 
 ## Architecture
@@ -22,7 +23,10 @@ packages/games    règles des jeux : une GameDefinition pure par dossier, + test
 apps/server       Node + ws ; sert aussi le client compilé ; /api/lan donne l'IP locale
 apps/client       React + React Three Fiber ; net/connection.ts = client WS + reconnexion
 scripts/verify    vérification de bout en bout (playwright-core + Chrome installé)
+deploy            VPS : site nginx, config PM2, préparation unique du serveur (setup-server.sh)
 ```
+
+En ligne, le serveur tourne sur un VPS IONOS (Debian, 1 cœur, 845 Mo de mémoire, d'autres sites à côté). nginx sert le client ; PM2 lance `apps/server/dist/server.mjs` (le serveur regroupé par esbuild) sur 127.0.0.1:5004. On compile sur le Mac, jamais sur le VPS. Les salons vivent en mémoire : chaque déploiement coupe les parties en cours.
 
 Règles qui tiennent l'architecture :
 
