@@ -173,3 +173,56 @@ describe('bots', () => {
     expect(lobby.roomCount).toBe(0);
   });
 });
+
+describe('game options', () => {
+  afterEach(() => vi.useRealTimers());
+
+  /** First to `goal` wins; with `timed`, the game ends once a second has passed. */
+  const options: GameDefinition<{ players: string[]; goal: number; late: boolean }, { win: 1 }> = {
+    id: 'opts',
+    name: 'Opts',
+    minPlayers: 2,
+    maxPlayers: 2,
+    options: [
+      { id: 'goal', label: 'Objectif', default: '3', choices: [{ value: '3', label: '3' }, { value: '5', label: '5' }] },
+      { id: 'timed', label: 'Chrono', default: 'no', choices: [{ value: 'no', label: 'Non' }, { value: 'yes', label: 'Oui' }] },
+    ],
+    setup: (players, _seed, opts = {}) => ({ players, goal: Number(opts.goal), late: false }),
+    validate: (_s, a): a is { win: 1 } => (a as { win?: number })?.win === 1,
+    apply: (s) => s,
+    clock: (s, ms) => (ms >= 1000 && !s.late ? { ...s, late: true } : s),
+    result: (s) => (s.late ? { kind: 'draw' } : null),
+  };
+
+  function room() {
+    const lobby = new Lobby({ opts: options });
+    const [a, b] = [client(lobby), client(lobby)];
+    a.session.receive({ t: 'create', name: 'A', gameId: 'opts' });
+    b.session.receive({ t: 'join', code: a.last('welcome')!.code, name: 'B' });
+    return { a, b };
+  }
+
+  it('starts with the defaults, which only the host can change, to a declared choice', () => {
+    const { a, b } = room();
+    expect(a.last('room')!.room.options).toEqual({ goal: '3', timed: 'no' });
+    b.session.receive({ t: 'setOption', id: 'goal', value: '5' });
+    expect(b.last('error')!.message).toMatch(/hôte/);
+    a.session.receive({ t: 'setOption', id: 'goal', value: '7' });
+    expect(a.last('error')!.message).toMatch(/inconnue/);
+    a.session.receive({ t: 'setOption', id: 'goal', value: '5' });
+    expect(b.last('room')!.room.options.goal).toBe('5');
+    a.session.receive({ t: 'start' });
+    expect((a.last('game')!.view as { goal: number }).goal).toBe(5);
+    a.session.receive({ t: 'setOption', id: 'goal', value: '3' });
+    expect(a.last('error')!.message).toMatch(/en cours/);
+  });
+
+  it('runs the game clock about once a second while playing', () => {
+    vi.useFakeTimers();
+    const { a } = room();
+    a.session.receive({ t: 'start' });
+    expect(a.last('game')!.result).toBe(null);
+    vi.advanceTimersByTime(1100);
+    expect(a.last('game')!.result).toEqual({ kind: 'draw' });
+  });
+});

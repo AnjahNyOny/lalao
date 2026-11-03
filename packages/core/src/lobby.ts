@@ -123,6 +123,11 @@ export class Session {
         room.removeBot(this.playerId!, msg.playerId);
         return room.broadcastRoom();
       }
+      case 'setOption': {
+        const room = this.requireRoom();
+        room.setOption(this.playerId!, msg.id, msg.value);
+        return room.broadcastRoom();
+      }
       case 'leave':
         this.close();
         this.transport.send({ t: 'left' });

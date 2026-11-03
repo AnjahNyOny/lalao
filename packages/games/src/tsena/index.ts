@@ -1,4 +1,4 @@
-import { mulberryStep, type GameDefinition, type PlayerId } from '@game/core';
+import { mulberryStep, type GameDefinition, type GameOption, type GameOptions, type PlayerId } from '@game/core';
 import {
   BAIL,
   CARD_BONUS,
@@ -21,6 +21,8 @@ import {
   MAX_LEVEL,
   majority,
   MAX_OFFERS,
+  MAX_ROUNDS,
+  MINUTE_CHOICES,
   mortgageValue,
   PACE,
   priceOf,
@@ -29,11 +31,16 @@ import {
   roundsFor,
   SALARY,
   START_MONEY,
+  TARGET_LEVELS,
+  TARGETS,
   TAX_RATE,
   TAXI_FARE,
   TAXI_RANGE,
+  TOTAL_TURNS,
+  TURN_CHOICES,
   type CardId,
   type Deck,
+  type EndMode,
 } from './board';
 import { tsenaBot } from './bot';
 
@@ -97,8 +104,19 @@ export type Pending =
   /** `from` offers `price` for `to`'s site: `to` answers. */
   | { kind: 'offer'; cell: number; price: number; from: number; to: number };
 
+/** The chosen end: the minutes and target only matter in their own mode. */
+export interface Ending {
+  mode: EndMode;
+  minutes: number;
+  target: number;
+}
+
 export interface TsenaState {
   players: PlayerId[];
+  ending: Ending;
+  /** Time mode: whole minutes played, and whether the limit has passed (the round in progress is the last). */
+  minutes: number;
+  timeUp: boolean;
   money: number[];
   pos: number[];
   /** Per cell: owning seat, or null. */
@@ -116,6 +134,7 @@ export interface TsenaState {
   /** Seat that played first: a round ends when the dice come back to it. */
   first: number;
   round: number;
+  /** The last round: the chosen length, or MAX_ROUNDS when the end comes another way. */
   rounds: number;
   /** Doubles rolled this turn, and whether the next roll is a replay. */
   doubles: number;
@@ -158,6 +177,14 @@ export function worthOf(s: Pick<TsenaView, 'money' | 'owner' | 'level' | 'mortga
     if (o !== seat) return sum;
     return sum + (s.mortgaged[cell] ? mortgageValue(cell) : priceOf(cell)) + s.level[cell] * houseCost(cell);
   }, s.money[seat]);
+}
+
+/** How far the game has gone, from 0 to 1, whatever ends it (bots pace their spending on it). */
+export function progressOf(s: TsenaView): number {
+  const rounds = (s.round - 1) / s.rounds;
+  if (s.ending.mode === 'time') return Math.max(rounds, Math.min(1, s.minutes / s.ending.minutes));
+  if (s.ending.mode === 'target') return Math.max(rounds, ...alive(s).map((seat) => Math.min(1, worthOf(s, seat) / s.ending.target)));
+  return rounds;
 }
 
 /** What landing on the site costs its visitors right now. */
@@ -496,6 +523,8 @@ class Turn {
   finish(end: boolean): TsenaState {
     const s = this.s;
     s.last = this.log;
+    // Target mode: the first fortune to reach the sum ends the game, whoever's turn it is.
+    if (s.ending.mode === 'target' && !s.over && alive(s).some((seat) => worthOf(s, seat) >= s.ending.target)) s.over = true;
     if (s.over || s.pending || !end) return s;
     if (s.again && !s.out[this.me]) {
       s.again = false;
@@ -507,11 +536,16 @@ class Turn {
     s.offers = 0;
     // A new round starts when the dice come back to the first player's seat.
     let next = this.me;
+    let newRound = false;
     do {
       next = (next + 1) % s.players.length;
-      if (next === s.first) s.round++;
+      if (next === s.first) {
+        s.round++;
+        newRound = true;
+      }
     } while (s.out[next] && next !== this.me);
-    if (s.round > s.rounds) s.over = true;
+    // Time mode: once the time is up, the round in progress is the last one.
+    if (s.round > s.rounds || (newRound && s.ending.mode === 'time' && s.timeUp)) s.over = true;
     else s.turn = next;
     return s;
   }
@@ -546,20 +580,78 @@ function isAction(a: unknown): a is TsenaAction {
   }
 }
 
+export const TSENA_OPTIONS: GameOption[] = [
+  {
+    id: 'mode',
+    label: 'Fin de partie',
+    default: 'turns',
+    choices: [
+      { value: 'turns', label: 'Nombre de tours', hint: 'Après le dernier tour, le plus riche gagne.' },
+      { value: 'time', label: 'Temps limité', hint: 'Le temps écoulé, on finit la manche et le plus riche gagne.' },
+      { value: 'bankrupt', label: 'Faillite', hint: `On joue jusqu’à ce qu’il ne reste qu’un joueur (${MAX_ROUNDS} manches au plus).` },
+      { value: 'target', label: 'Somme à atteindre', hint: 'Le premier dont la fortune atteint la somme gagne : argent, sites et bâtiments.' },
+    ],
+  },
+  {
+    id: 'turns',
+    label: 'Durée',
+    default: String(TOTAL_TURNS),
+    when: { option: 'mode', values: ['turns'] },
+    hint: 'Manches à deux joueurs ; moitié moins à quatre.',
+    choices: TURN_CHOICES.map((total) => ({ value: String(total), label: `${Math.ceil(total / 2)} manches` })),
+  },
+  {
+    id: 'minutes',
+    label: 'Temps',
+    default: '30',
+    when: { option: 'mode', values: ['time'] },
+    choices: MINUTE_CHOICES.map((m) => ({ value: String(m), label: `${m} min` })),
+  },
+  {
+    id: 'target',
+    label: 'Fortune à atteindre',
+    default: 'medium',
+    when: { option: 'mode', values: ['target'] },
+    hint: 'Elle grandit avec le nombre de joueurs : de 3 000 Ar à deux à 6 000 Ar à quatre.',
+    choices: [
+      { value: 'small', label: 'Petite' },
+      { value: 'medium', label: 'Moyenne' },
+      { value: 'large', label: 'Grande' },
+    ],
+  },
+];
+
+/** Reads the lobby's choices, falling back to the defaults on anything unexpected. */
+function endingFrom(options: GameOptions, players: number): { ending: Ending; rounds: number } {
+  const pick = <T extends number>(value: string | undefined, choices: readonly T[], fallback: T): T =>
+    choices.find((c) => String(c) === value) ?? fallback;
+  const mode: EndMode = (['turns', 'time', 'bankrupt', 'target'] as const).find((m) => m === options.mode) ?? 'turns';
+  const level = TARGET_LEVELS.findIndex((l) => l === options.target);
+  const target = TARGETS[Math.min(4, Math.max(2, players))][level >= 0 ? level : 1];
+  const ending = { mode, minutes: pick<number>(options.minutes, MINUTE_CHOICES, 30), target };
+  const rounds = mode === 'turns' ? roundsFor(players, pick<number>(options.turns, TURN_CHOICES, TOTAL_TURNS)) : MAX_ROUNDS;
+  return { ending, rounds };
+}
+
 export const tsena: GameDefinition<TsenaState, TsenaAction, TsenaView> = {
   id: 'tsena',
   name: 'Tsena',
   minPlayers: 2,
   maxPlayers: 4,
+  options: TSENA_OPTIONS,
   // Wait for the last action to finish playing on screen, then a beat.
   botDelayMs: (state) => {
     const busy = replayMs(state.last) + PACE.settle;
     return [busy, busy + 500];
   },
 
-  setup(players, seed) {
+  setup(players, seed, options = {}) {
+    const { ending, rounds } = endingFrom(options, players.length);
     return {
       players,
+      ending,
+      minutes: 0,
+      timeUp: false,
       money: players.map(() => START_MONEY),
       pos: players.map(() => 0),
       owner: CELLS.map(() => null),
@@ -571,7 +663,7 @@ export const tsena: GameDefinition<TsenaState, TsenaAction, TsenaView> = {
       turn: seed % players.length,
       first: seed % players.length,
       round: 1,
-      rounds: roundsFor(players.length),
+      rounds,
       doubles: 0,
       again: false,
       offers: 0,
@@ -728,6 +820,14 @@ export const tsena: GameDefinition<TsenaState, TsenaAction, TsenaView> = {
     // Managing and trading leave a pending purchase where it was.
     if (pending?.kind === 'buy') s.pending = pending;
     return t.finish(false);
+  },
+
+  clock(state, elapsedMs) {
+    if (state.ending.mode !== 'time' || state.over) return state;
+    const minutes = Math.floor(elapsedMs / 60_000);
+    const timeUp = elapsedMs >= state.ending.minutes * 60_000;
+    if (minutes === state.minutes && timeUp === state.timeUp) return state;
+    return { ...state, minutes, timeUp };
   },
 
   viewFor(state) {

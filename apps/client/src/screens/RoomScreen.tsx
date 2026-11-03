@@ -1,4 +1,4 @@
-import { BOT_LEVELS, type GameResult, type PlayerId, type RoomInfo } from '@game/core';
+import { BOT_LEVELS, type GameOption, type GameResult, type PlayerId, type RoomInfo } from '@game/core';
 import { games } from '@game/games';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
@@ -7,18 +7,18 @@ import { gameClients } from '../games';
 import { connection } from '../net/connection';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 
-/** A link other devices can open: swaps localhost for this machine's LAN address. */
-function useShareLink(code: string): string {
+/** A link other devices can open: swaps localhost for this machine's LAN address. Not for a solo game, which has no server. */
+function useShareLink(code: string, solo: boolean): string {
   const [base, setBase] = useState(location.origin);
   useEffect(() => {
-    if (!['localhost', '127.0.0.1'].includes(location.hostname)) return;
+    if (solo || !['localhost', '127.0.0.1'].includes(location.hostname)) return;
     fetch('/api/lan')
       .then((r) => r.json())
       .then(({ addresses }: { addresses: string[] }) => {
         if (addresses[0]) setBase(`${location.protocol}//${addresses[0]}${location.port ? `:${location.port}` : ''}`);
       })
       .catch(() => {});
-  }, []);
+  }, [solo]);
   return `${base}/?room=${code}`;
 }
 
@@ -30,18 +30,52 @@ function QrCode({ text }: { text: string }) {
   return src ? <img className="qr" src={src} alt="QR code pour rejoindre" /> : <div className="qr" />;
 }
 
-function Waiting({ room, me }: { room: RoomInfo; me: PlayerId }) {
+/** The game's choices (mode, length…): the host picks, everyone sees. */
+function Options({ room, isHost }: { room: RoomInfo; isHost: boolean }) {
+  const all: GameOption[] = games[room.gameId].options ?? [];
+  const shown = all.filter((o) => !o.when || o.when.values.includes(room.options[o.when.option]));
+  if (!shown.length) return null;
+  return (
+    <div className="options">
+      {shown.map((o) => {
+        const value = room.options[o.id] ?? o.default;
+        const hint = o.choices.find((c) => c.value === value)?.hint ?? o.hint;
+        return (
+          <div className="option" key={o.id}>
+            <span className="muted">{o.label}</span>
+            <div className="segmented" role="radiogroup" aria-label={o.label} style={{ ['--cols' as string]: o.choices.length === 4 ? 2 : o.choices.length }}>
+              {o.choices.map((c) => (
+                <button key={c.value} role="radio" aria-checked={c.value === value} disabled={!isHost} onClick={() => connection.setOption(o.id, c.value)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {hint && <p className="muted small">{hint}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Waiting({ room, me, solo }: { room: RoomInfo; me: PlayerId; solo: boolean }) {
   const game = games[room.gameId];
-  const link = useShareLink(room.code);
+  const link = useShareLink(room.code, solo);
   const isHost = room.hostId === me;
   const canStart = room.players.length >= game.minPlayers;
 
   return (
     <main className="screen lobby">
       <p className="muted">{game.name}</p>
-      <div className="room-code">{room.code}</div>
-      <QrCode text={link} />
-      <p className="muted small">Scanne ou ouvre {link}</p>
+      {solo ? (
+        <p className="muted small">Partie solo contre des bots, sans connexion.</p>
+      ) : (
+        <>
+          <div className="room-code">{room.code}</div>
+          <QrCode text={link} />
+          <p className="muted small">Scanne ou ouvre {link}</p>
+        </>
+      )}
 
       <ul className="players">
         {room.players.map((p) => (
@@ -77,6 +111,8 @@ function Waiting({ room, me }: { room: RoomInfo; me: PlayerId }) {
         </div>
       )}
 
+      <Options room={room} isHost={isHost} />
+
       {isHost ? (
         <button className="primary" disabled={!canStart} onClick={() => connection.start()}>
           {canStart ? 'Lancer la partie' : `Il faut ${game.minPlayers} joueurs`}
@@ -106,7 +142,8 @@ function ResultBanner({ result, room, me }: { result: GameResult; room: RoomInfo
   );
 }
 
-export function RoomScreen({ room, me, game }: { room: RoomInfo; me: PlayerId; game: { view: unknown; result: GameResult | null } | null }) {
+export function RoomScreen(props: { room: RoomInfo; me: PlayerId; game: { view: unknown; result: GameResult | null } | null; solo: boolean }) {
+  const { room, me, game } = props;
   const client = gameClients[room.gameId];
   return (
     <>
@@ -127,7 +164,7 @@ export function RoomScreen({ room, me, game }: { room: RoomInfo; me: PlayerId; g
           {game.result && <ResultBanner result={game.result} room={room} me={me} />}
         </>
       ) : (
-        <Waiting room={room} me={me} />
+        <Waiting room={room} me={me} solo={props.solo} />
       )}
     </>
   );

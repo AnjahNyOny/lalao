@@ -108,7 +108,25 @@ export const START_MONEY = 2000;
 export const SALARY = 250;
 /** The game lasts about this many turns in all: more rounds with fewer players. */
 export const TOTAL_TURNS = 64;
-export const roundsFor = (players: number) => Math.ceil(TOTAL_TURNS / players);
+export const roundsFor = (players: number, total = TOTAL_TURNS) => Math.ceil(total / players);
+/** Without a round limit (bankruptcy, target), a game still ends after this many rounds. */
+export const MAX_ROUNDS = 100;
+
+/** How a game ends, chosen by the host in the lobby. */
+export type EndMode = 'turns' | 'time' | 'bankrupt' | 'target';
+export const TURN_CHOICES = [20, 40, 64] as const;
+export const MINUTE_CHOICES = [15, 30, 45] as const;
+/**
+ * Target mode: three levels whose sum grows with the players, since the money in
+ * play does (and bankrupt players' money goes to the others). Measured on bot
+ * games: two players reach 3 000 Ar in about 7 minutes, four reach 6 000 in 17.
+ */
+export const TARGET_LEVELS = ['small', 'medium', 'large'] as const;
+export const TARGETS: Record<number, readonly [number, number, number]> = {
+  2: [3000, 3300, 3600],
+  3: [3500, 4000, 4600],
+  4: [4000, 5000, 6000],
+};
 /** A taxi-brousse ride costs this much and goes up to TAXI_RANGE cells ahead. */
 export const TAXI_FARE = 50;
 export const TAXI_RANGE = 6;

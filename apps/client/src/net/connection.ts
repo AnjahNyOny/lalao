@@ -8,6 +8,8 @@ export interface ClientState {
   room: RoomInfo | null;
   game: { view: unknown; result: GameResult | null } | null;
   error: string | null;
+  /** A solo game against bots, running in this page. */
+  solo: boolean;
 }
 
 interface SavedSession {
@@ -37,7 +39,7 @@ function save(s: SavedSession | null): void {
 }
 
 export class Connection {
-  private state: ClientState = { connected: false, me: null, room: null, game: null, error: null };
+  private state: ClientState = { connected: false, me: null, room: null, game: null, error: null, solo: false };
   private listeners = new Set<() => void>();
   private ws: WebSocket | null = null;
   private queue: ClientMessage[] = [];
@@ -86,7 +88,14 @@ export class Connection {
     this.send({ t: 'removeBot', playerId });
   }
 
-  /** Starts a game against bots straight away, entirely offline. */
+  setOption(id: string, value: string): void {
+    this.send({ t: 'setOption', id, value });
+  }
+
+  /**
+   * A game against bots, entirely offline. Starts straight away, unless the
+   * game has options to choose: then the player sees the lobby first.
+   */
   playSolo(name: string, gameId: string, level: BotLevel): void {
     this.pendingName = name;
     this.localLobby ??= new Lobby(games);
@@ -94,10 +103,10 @@ export class Connection {
     this.local = this.localLobby.connect({
       send: (msg) => queueMicrotask(() => this.handle(JSON.parse(JSON.stringify(msg)))),
     });
-    this.set({ connected: true });
+    this.set({ connected: true, solo: true });
     this.send({ t: 'create', name, gameId });
     for (let i = 1; i < games[gameId].minPlayers; i++) this.send({ t: 'addBot', level });
-    this.send({ t: 'start' });
+    if (!games[gameId].options?.length) this.send({ t: 'start' });
   }
 
   leave(): void {
@@ -107,7 +116,7 @@ export class Connection {
       this.local = null;
     }
     this.forgetRoom();
-    this.set({ connected: this.wsConnected });
+    this.set({ connected: this.wsConnected, solo: false });
   }
 
   private send(msg: ClientMessage): void {

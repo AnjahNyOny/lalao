@@ -14,6 +14,7 @@ import {
   LEVEL_NAMES,
   majority,
   MAX_LEVEL,
+  MAX_ROUNDS,
   mortgageValue,
   priceOf,
   redeemCost,
@@ -64,6 +65,38 @@ export function hopInfo(s: View, seat: number, steps: number, name: (seat: numbe
   return { cell, text: `loyer ${ar(rentOf(s, cell))} · ${name(owner)}${salary}` };
 }
 
+/** Top-right badge, as narrow as the buttons under it: how far the game is from its end. */
+function endBadge(s: View): { top: string; value: string; label: string } {
+  switch (s.ending.mode) {
+    case 'turns':
+      return { top: 'Tour', value: `${Math.min(s.round, s.rounds)}/${s.rounds}`, label: `Tour ${s.round} sur ${s.rounds}` };
+    case 'time': {
+      const left = Math.max(1, s.ending.minutes - s.minutes);
+      return s.timeUp
+        ? { top: '⏱', value: 'fin', label: 'Temps écoulé : dernière manche' }
+        : { top: '⏱', value: `${left} min`, label: `Il reste ${left} minutes` };
+    }
+    case 'bankrupt':
+      return { top: '💥 Tour', value: String(s.round), label: `Tour ${s.round}, jusqu’à la faillite` };
+    case 'target':
+      return { top: '🏆', value: s.ending.target.toLocaleString('fr-FR').replace(/\s/g, '\u202f'), label: `Objectif : ${ar(s.ending.target)}` };
+  }
+}
+
+/** The end of the game, for the rules sheet. */
+function endRule(s: View): string {
+  switch (s.ending.mode) {
+    case 'turns':
+      return `Après ${s.rounds} tours, le plus riche gagne : argent, sites et bâtiments.`;
+    case 'time':
+      return `Au bout de ${s.ending.minutes} minutes, on finit la manche et le plus riche gagne : argent, sites et bâtiments.`;
+    case 'bankrupt':
+      return `On joue jusqu’à ce qu’il ne reste qu’un joueur (${MAX_ROUNDS} tours au plus, puis le plus riche gagne).`;
+    case 'target':
+      return `Le premier dont la fortune (argent, sites et bâtiments) atteint ${ar(s.ending.target)} gagne.`;
+  }
+}
+
 /** « 2 sur 3 à toi » for a site's region. */
 function regionShare(s: View, seat: number, cell: number): string {
   const cells = regionOf(cell);
@@ -109,7 +142,12 @@ export function Hud(p: HudProps) {
   } else if (sheet === 'assets' && seat >= 0) {
     panel = <Assets s={s} seat={seat} onSelect={p.onSelect} onClose={() => setSheet(null)} />;
   } else if (myTurn) {
-    panel = <Choice s={s} seat={seat} name={name} send={send} disabled={sent} onAssets={() => toggle('assets')} />;
+    panel = (
+      <>
+        {s.timeUp && <p className="tsena-hint">⏱ Temps écoulé : c’est la dernière manche.</p>}
+        <Choice s={s} seat={seat} name={name} send={send} disabled={sent} onAssets={() => toggle('assets')} />
+      </>
+    );
   } else {
     panel = (
       <>
@@ -131,24 +169,39 @@ export function Hud(p: HudProps) {
               className={`${(p.acting ?? s.turn) === i && !s.over ? 'active' : ''} ${display.out[i] ? 'out' : ''}`}
               style={{ ['--seat' as string]: island.players[i] }}
             >
-              <span className="tsena-avatar" aria-hidden>
-                {island.pawns[i].emoji}
+              <span className="tsena-avatar">
+                <span aria-hidden>{island.pawns[i].emoji}</span>
+                {/* Small badges on the avatar, so the cash always fits. */}
+                {display.jail[i] > 0 && (
+                  <span className="tsena-badge jail" title="Au fonja" aria-label="Au fonja">
+                    ⛓️
+                  </span>
+                )}
+                {display.passes[i] > 0 && (
+                  <span className="tsena-badge pass" title="Laissez-passer" aria-label={`${display.passes[i]} laissez-passer`}>
+                    🎫
+                  </span>
+                )}
               </span>
               <span className="tsena-name">
                 {name(i)}
                 {id === me && ' (toi)'}
               </span>
+              {s.ending.mode === 'target' && !display.out[i] && (
+                <span className="tsena-progress" aria-label={`Fortune : ${ar(worthOf({ ...s, ...display }, i))}`}>
+                  <span style={{ width: `${Math.min(100, (worthOf({ ...s, ...display }, i) / s.ending.target) * 100)}%` }} />
+                </span>
+              )}
               <span className="tsena-money">
                 {display.out[i] ? 'ruiné' : ar(display.money[i])}
-                {display.jail[i] > 0 && <span title="Au fonja"> ⛓️</span>}
-                {display.passes[i] > 0 && <span title="Laissez-passer"> 🎫{display.passes[i] > 1 ? display.passes[i] : ''}</span>}
               </span>
             </li>
           ))}
         </ul>
         <div className="tsena-tools">
-          <span className="tsena-round">
-            Tour {Math.min(s.round, s.rounds)}/{s.rounds}
+          <span className="tsena-round" aria-label={endBadge(s).label}>
+            <small>{endBadge(s).top}</small>
+            <b>{endBadge(s).value}</b>
           </span>
           <button className="tsena-map" onClick={p.onOverview} aria-pressed={p.overview} aria-label="Vue d'ensemble">
             {p.overview ? '📍' : '🗺️'}
@@ -532,7 +585,7 @@ function Rules({ s, onClose }: { s: View; onClose: () => void }) {
         <li>
           🏛️ Hetra prend 10 % de ton argent ; la taxe foncière, {ar(LAND_TAX.house)} par maison. 🏁 Chaque passage à Tana rapporte {ar(SALARY)}.
         </li>
-        <li>🏆 Ruiné, on quitte la partie. Après {s.rounds} tours, le plus riche gagne : argent, sites et bâtiments.</li>
+        <li>🏆 Ruiné, on quitte la partie. {endRule(s)}</li>
       </ul>
     </div>
   );

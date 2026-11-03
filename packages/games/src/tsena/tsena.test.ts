@@ -16,6 +16,7 @@ import {
   JAIL_TRIES,
   LAND_TAX,
   MAX_OFFERS,
+  MAX_ROUNDS,
   mortgageValue,
   REGIONS,
   redeemCost,
@@ -441,16 +442,58 @@ describe('tsena end', () => {
   });
 });
 
+describe('tsena end modes', () => {
+  it('defaults to a round limit, scaled to the number of players', () => {
+    expect(tsena.setup(['a', 'b'], 0).rounds).toBe(32);
+    expect(tsena.setup(['a', 'b', 'c', 'd'], 0, { mode: 'turns', turns: '20' }).rounds).toBe(5);
+    expect(tsena.setup(['a', 'b'], 0, { mode: 'turns', turns: '20' }).rounds).toBe(10);
+    // Unknown values fall back to the defaults.
+    expect(tsena.setup(['a', 'b'], 0, { mode: 'chess', turns: '7' })).toMatchObject({ ending: { mode: 'turns' }, rounds: 32 });
+  });
+
+  it('time: the clock marks the limit, the game ends with the round in progress', () => {
+    const s = { ...at(0, [1, 3]), ...tsena.setup(P, 0, { mode: 'time', minutes: '15' }), pos: [0, 0, 0], turn: 0, first: 0, rng: at(0, [1, 3]).rng };
+    expect(s.rounds).toBe(MAX_ROUNDS);
+    expect(tsena.clock!(s, 59_000)).toBe(s);
+    expect(tsena.clock!(s, 61_000)).toMatchObject({ minutes: 1, timeUp: false });
+    const late = tsena.clock!(s, 15 * 60_000);
+    expect(late.timeUp).toBe(true);
+    // Player 0 opens the round: it goes on…
+    const after = act(roll(late), { type: 'pass' });
+    expect(after.over).toBe(false);
+    // …until the dice come back to the first seat.
+    const last = { ...after, turn: 2, rng: rngWith(die(1), die(3)) };
+    expect(act(roll(last), { type: 'pass' }).over).toBe(true);
+  });
+
+  it('bankruptcy: no round limit but the safety cap', () => {
+    expect(tsena.setup(P, 0, { mode: 'bankrupt' }).rounds).toBe(MAX_ROUNDS);
+  });
+
+  it('target: the first fortune to reach the sum wins at once', () => {
+    const s = { ...tsena.setup(P, 0, { mode: 'target', target: 'small' }), turn: 0, first: 0, rng: rngWith(die(1), die(3)) };
+    expect(s.ending.target).toBe(3500);
+    expect(tsena.setup(['a', 'b'], 0, { mode: 'target', target: 'large' }).ending.target).toBe(3600);
+    // Player 1's fortune: 3 390 Ar and Ambositra (100 Ar), 10 Ar short.
+    s.money = [START_MONEY, 3390, START_MONEY];
+    own(s, 1, [AMBOSITRA]);
+    // Player 0 pays rent to player 1, whose fortune crosses the target.
+    const end = roll(s);
+    expect(end.over).toBe(true);
+    expect(tsena.result(end)).toEqual({ kind: 'win', winners: ['b'] });
+  });
+});
+
 describe('tsena bots', () => {
   /** Whoever has to act: the offer's addressee, else the current player. */
   const actor = (s: TsenaState) => (s.pending?.kind === 'offer' ? s.players[s.pending.to] : s.players[s.turn]);
   const bot = (s: TsenaState, level: BotLevel, by = actor(s)) => tsena.bot!(tsena.viewFor!(s, by), by, level, mulberry32(1));
 
   /** A whole game between the given levels; returns the final state. */
-  function play(levels: BotLevel[], seed: number): TsenaState {
+  function play(levels: BotLevel[], seed: number, options = {}): TsenaState {
     const rand = mulberry32(seed);
     const players = levels.map((_, i) => `p${i}`);
-    let s = tsena.setup(players, seed);
+    let s = tsena.setup(players, seed, options);
     for (let n = 0; !tsena.result(s); n++) {
       if (n > 3000) throw new Error('game never ends');
       const by = actor(s);
@@ -465,6 +508,12 @@ describe('tsena bots', () => {
   it('plays legal moves to the end at every level', () => {
     for (const level of BOT_LEVELS) for (let seed = 0; seed < 3; seed++) play([level, level], seed);
     for (let seed = 0; seed < 3; seed++) play(['hard', 'medium', 'easy', 'hard'], seed);
+  });
+
+  it('finishes a game in every end mode', () => {
+    for (const options of [{ mode: 'bankrupt' }, { mode: 'target', target: 'medium' }, { mode: 'turns', turns: '20' }]) {
+      for (let seed = 0; seed < 3; seed++) expect(tsena.result(play(['hard', 'medium'], seed, options))).not.toBeNull();
+    }
   });
 
   it('hard grabs the site that lets it build, even short of cash', () => {

@@ -37,6 +37,7 @@ Règles qui tiennent l'architecture :
 - Le client ne réimplémente pas les règles : il affiche la vue reçue. Pour un retour immédiat, préférer une anticipation visuelle (jeton fantôme…) à une prédiction d'état.
 - `window.__lalao` (client) expose l'état et `act` pour les tests automatisés.
 - **Bots** : `GameDefinition.bot(view, me, level, rand)`, joués par `Room` après un délai (700 à 1200 ms, ou `botDelayMs`, qui peut dépendre de l'état : Tsena attend la fin du rejeu avec `replayMs`). Ce sont des membres sans transport : ils ne gardent pas un salon vivant à eux seuls.
+- **Options de partie** : un jeu déclare ses choix dans `GameDefinition.options` (mode, durée…). L'hôte les règle dans le salon et `setup` les reçoit. Un jeu avec des options passe par le salon même en solo. `clock(state, ms)` sert aux jeux au tour par tour qui suivent le temps réel (le mode « temps limité » de Tsena), environ une fois par seconde.
 - **Solo hors ligne** : `connection.playSolo` fait tourner un `Lobby` dans la page (aucun serveur). Les messages passent quand même par un aller-retour JSON asynchrone, pour se comporter comme le réseau.
 
 ## Ajouter un jeu

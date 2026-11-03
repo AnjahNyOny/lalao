@@ -1,6 +1,6 @@
 import type { RoomInfo, RoomStatus, ServerMessage } from './protocol';
 import { mulberry32, randomId, randomSeed } from './random';
-import type { AnyGame, BotLevel, GameResult, PlayerId } from './types';
+import { defaultOptions, type AnyGame, type BotLevel, type GameOptions, type GameResult, type PlayerId } from './types';
 
 export interface Transport {
   send(msg: ServerMessage): void;
@@ -25,6 +25,7 @@ export interface RoomOptions {
 }
 
 const TICK_MS = 50;
+const CLOCK_MS = 1000;
 const MAX_NAME = 16;
 const DEFAULT_BOT_DELAY: [number, number] = [700, 1200];
 const BOT_NAMES = ['Pixel', 'Bip', 'Turbo', 'Néon', 'Joystick', 'Arcadia', 'Volt', 'Glitch'];
@@ -40,6 +41,9 @@ export class Room {
   private state: unknown = null;
   private result: GameResult | null = null;
   private loop: ReturnType<typeof setInterval> | null = null;
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
+  /** The host's choices, kept from one game to the next. */
+  readonly options: GameOptions;
   /** Bumped on every state change, so a bot never plays on a stale view. */
   private version = 0;
   private botTimer: ReturnType<typeof setTimeout> | null = null;
@@ -48,8 +52,10 @@ export class Room {
   constructor(
     readonly code: string,
     readonly game: AnyGame,
-    private readonly options: RoomOptions = {},
-  ) {}
+    private readonly roomOptions: RoomOptions = {},
+  ) {
+    this.options = defaultOptions(game);
+  }
 
   /** No human connected. Bots alone don't keep a room alive. */
   get isEmpty(): boolean {
@@ -99,6 +105,15 @@ export class Room {
     this.members.splice(i, 1);
   }
 
+  /** Host only, between games: one of the choices the game declares. */
+  setOption(by: PlayerId, id: string, value: string): void {
+    this.requireHost(by);
+    if (this.status === 'playing') throw new RoomError('La partie est déjà en cours');
+    const option = this.game.options?.find((o) => o.id === id);
+    if (!option || !option.choices.some((c) => c.value === value)) throw new RoomError('Option inconnue');
+    this.options[id] = value;
+  }
+
   start(by: PlayerId): void {
     this.requireHost(by);
     if (this.status === 'playing') throw new RoomError('La partie est déjà en cours');
@@ -111,7 +126,7 @@ export class Room {
     if (n < this.game.minPlayers) throw new RoomError(`Il faut au moins ${this.game.minPlayers} joueurs`);
     if (n > this.game.maxPlayers) throw new RoomError(`${this.game.maxPlayers} joueurs maximum`);
 
-    this.state = this.game.setup(this.members.map((m) => m.id), randomSeed());
+    this.state = this.game.setup(this.members.map((m) => m.id), randomSeed(), { ...this.options });
     this.result = null;
     this.status = 'playing';
     if (this.game.tick) {
@@ -119,6 +134,15 @@ export class Room {
         this.state = this.game.tick!(this.state, TICK_MS);
         this.changed();
       }, TICK_MS);
+    }
+    if (this.game.clock) {
+      const started = Date.now();
+      this.clockTimer = setInterval(() => {
+        const next = this.game.clock!(this.state, Date.now() - started);
+        if (next === this.state) return;
+        this.state = next;
+        this.changed();
+      }, CLOCK_MS);
     }
     this.broadcastRoom();
     this.changed();
@@ -149,6 +173,7 @@ export class Room {
         connected: !!m.transport || !!m.bot,
         ...(m.bot && { bot: m.bot }),
       })),
+      options: { ...this.options },
     };
   }
 
@@ -222,7 +247,7 @@ export class Room {
   }
 
   private botDelay(): [number, number] {
-    const pace = this.options.botDelayMs ?? this.game.botDelayMs ?? DEFAULT_BOT_DELAY;
+    const pace = this.roomOptions.botDelayMs ?? this.game.botDelayMs ?? DEFAULT_BOT_DELAY;
     return typeof pace === 'function' ? pace(this.state) : pace;
   }
 
@@ -237,6 +262,8 @@ export class Room {
 
   private stopLoop(): void {
     if (this.loop) clearInterval(this.loop);
+    if (this.clockTimer) clearInterval(this.clockTimer);
     this.loop = null;
+    this.clockTimer = null;
   }
 }

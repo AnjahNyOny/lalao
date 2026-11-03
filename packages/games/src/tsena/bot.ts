@@ -1,5 +1,5 @@
 import type { BotLevel, PlayerId } from '@game/core';
-import { alive, canBuild, canOffer, rentOf, type Pending, type TsenaAction, type TsenaView } from '.';
+import { alive, canBuild, canOffer, progressOf, rentOf, type Pending, type TsenaAction, type TsenaView } from '.';
 import {
   BAIL,
   CELL_COUNT,
@@ -35,7 +35,7 @@ function dangerAhead(s: TsenaView, seat: number, from = s.pos[seat]): number {
 const hardReserve = (s: TsenaView, seat: number) => Math.max(120, dangerAhead(s, seat) * 0.8);
 
 /** Share of the game still to play, from 1 down to 0. */
-const leftOf = (s: TsenaView) => (s.rounds - s.round + 1) / s.rounds;
+const leftOf = (s: TsenaView) => 1 - progressOf(s);
 
 /** The other sites of the cell's region, by owner. */
 const regionOwners = (s: TsenaView, cell: number) => regionOf(cell).filter((i) => i !== cell).map((i) => s.owner[i]);

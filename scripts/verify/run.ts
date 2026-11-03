@@ -101,6 +101,16 @@ const lalao = (p: Player) =>
     return { me: s.me, room: s.room, game: s.game };
   });
 
+/** In the lobby, the host clicks the first choice of every option shown (the shortest game). */
+async function pickOptions(page: Page): Promise<number> {
+  let picked = 0;
+  for (let k = 0; k < (await page.locator('.option').count()); k++) {
+    await page.locator('.option').nth(k).locator('button[role="radio"]').first().click();
+    picked++;
+  }
+  return picked;
+}
+
 /** Solo against bots with the browser offline: the room runs inside the page. */
 async function verifySolo(browser: Browser, gameId: string): Promise<void> {
   const game = games[gameId];
@@ -116,6 +126,14 @@ async function verifySolo(browser: Browser, gameId: string): Promise<void> {
   await p.page.click('.segmented.level button:has-text("Difficile")');
   await p.page.screenshot({ path: path.join(dir, '5-solo-menu-mobile.png') });
   await p.page.click(`.game-tile:has-text("${game.name}")`);
+  // A game with options shows its lobby first, even offline.
+  if (game.options?.length) {
+    await p.page.waitForSelector('.option');
+    await pickOptions(p.page);
+    await p.page.screenshot({ path: path.join(dir, '5-solo-salon-mobile.png') });
+    report(!(await p.page.isVisible('.room-code')), 'solo : salon sans code d’invitation');
+    await p.page.click('button:has-text("Lancer la partie")');
+  }
   await waitForGame(p);
 
   let result = null;
@@ -188,6 +206,12 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
   await shot(host, '2-salon');
   report(true, 'salon', `code ${code}, ${players.length} joueurs`);
 
+  if (game.options?.length) {
+    const picked = await pickOptions(host.page);
+    const options = await guests[0].page.evaluate(() => window.__lalao!.state().room!.options);
+    await shot(host, '2-salon-options');
+    report(picked > 0, 'options choisies par l’hôte, vues par les invités', JSON.stringify(options));
+  }
   await host.page.click('button:has-text("Lancer la partie")');
   for (const p of players) await waitForGame(p);
   await host.page.waitForTimeout(1000);
