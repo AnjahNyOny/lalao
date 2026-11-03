@@ -106,6 +106,8 @@ async function pickOptions(page: Page): Promise<number> {
   let picked = 0;
   for (let k = 0; k < (await page.locator('.option').count()); k++) {
     await page.locator('.option').nth(k).locator('button[role="radio"]').first().click();
+    // Selected once the server has confirmed the choice (online, that takes a round trip).
+    await page.waitForSelector(`.options > .option:nth-child(${k + 1}) button[role="radio"]:first-child[aria-checked="true"]`);
     picked++;
   }
   return picked;
@@ -208,6 +210,9 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
 
   if (game.options?.length) {
     const picked = await pickOptions(host.page);
+    // The guest sees the host's choices once the server has passed them on.
+    const wanted = JSON.stringify(await host.page.evaluate(() => window.__lalao!.state().room!.options));
+    await guests[0].page.waitForFunction((w) => JSON.stringify(window.__lalao!.state().room!.options) === w, wanted);
     const options = await guests[0].page.evaluate(() => window.__lalao!.state().room!.options);
     await shot(host, '2-salon-options');
     report(picked > 0, 'options choisies par l’hôte, vues par les invités', JSON.stringify(options));
