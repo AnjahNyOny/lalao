@@ -8,6 +8,8 @@ export interface PlayerInfo {
   seat: number;
   connected: boolean;
   bot?: BotLevel;
+  /** The piece this player picked, for games that have pieces. */
+  piece?: string;
 }
 
 export interface RoomInfo {
@@ -31,6 +33,8 @@ export type ClientMessage =
   | { t: 'removeBot'; playerId: PlayerId }
   /** Host only, between games. */
   | { t: 'setOption'; id: string; value: string }
+  /** Any player, between games: their own piece. */
+  | { t: 'setPiece'; piece: string }
   | { t: 'leave' };
 
 export type ServerMessage =
@@ -65,6 +69,8 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
       return isString(m.playerId) ? { t: 'removeBot', playerId: m.playerId } : null;
     case 'setOption':
       return isString(m.id) && isString(m.value) ? { t: 'setOption', id: m.id, value: m.value } : null;
+    case 'setPiece':
+      return isString(m.piece) ? { t: 'setPiece', piece: m.piece } : null;
     default:
       return null;
   }

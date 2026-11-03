@@ -6,6 +6,7 @@ import { Model, Scatter } from './assets';
 import { DIE_UP, diceMaterials, LABEL_H, LABEL_W, labelTexture, resetLabels } from './labels';
 import { cellPos, coast, hills, houseAt, islandBox, islets, landmarkAt, onLand, paddies, road, roadAt, scenery, stretch, type Spot } from './map';
 import { now, type Playback, type Shown } from './replay';
+import { pawnModel } from './pawns';
 import { SITES } from './texts';
 import { island } from './theme';
 
@@ -20,6 +21,8 @@ export interface SceneProps {
   /** Seat whose turn it is (camera goes there when nothing is playing). */
   turn: number;
   players: number;
+  /** Each seat's pawn id, as picked in the lobby. */
+  pawns: string[];
   overview: boolean;
   /** Cells to make pulse: taxi destinations. */
   highlight: number[];
@@ -629,7 +632,7 @@ function walking(seat: number, pb: Playback, elapsed: number): { at: THREE.Vecto
   return { at: roadAt(cell), u: cell, cell, hop: 0, dir: 0 };
 }
 
-function Pawn({ seat, spots, display, playback, turn }: SceneProps & { seat: number; spots: PawnSpots }) {
+function Pawn({ seat, spots, display, playback, turn, pawns }: SceneProps & { seat: number; spots: PawnSpots }) {
   const ref = useRef<THREE.Group>(null!);
   const marker = useRef<THREE.Mesh>(null!);
   const cage = useRef<THREE.Group>(null!);
@@ -684,7 +687,7 @@ function Pawn({ seat, spots, display, playback, turn }: SceneProps & { seat: num
         <cylinderGeometry args={[0.3, 0.33, 0.07, 14]} />
         <meshStandardMaterial color={color} flatShading />
       </mesh>
-      <Model name={island.pawns[seat].model} position-y={0.07} />
+      <Model name={pawnModel(pawns[seat])} position-y={0.07} />
       <group ref={cage} visible={false}>
         <Model name="cage" scale={0.95} shadows={false} />
       </group>

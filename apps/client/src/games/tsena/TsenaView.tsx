@@ -6,10 +6,11 @@ import { Hud } from './Hud';
 import { useReplay, type Shown } from './replay';
 import { Scene } from './Scene';
 import { island } from './theme';
+import { pawnImage, pawnLabel, pawnsOf } from './pawns';
 import { KIND_ICON, SITES } from './texts';
 
 /** Without WebGL: the road as a plain list, still playable through the HUD. */
-function FlatBoard({ display, players, onCell }: { display: Shown; players: number; onCell: (cell: number) => void }) {
+function FlatBoard({ display, pawns, onCell }: { display: Shown; pawns: string[]; onCell: (cell: number) => void }) {
   return (
     <ol className="tsena-flat">
       {CELLS.map((c, i) => (
@@ -22,8 +23,8 @@ function FlatBoard({ display, players, onCell }: { display: Shown; players: numb
           }}
         >
           <span>{c.kind === 'site' ? `${SITES[c.name].icon} ${c.name}` : `${KIND_ICON[c.kind]} ${c.name}`}</span>
-          <span>
-            {Array.from({ length: players }, (_, s) => (display.pos[s] === i && !display.out[s] ? island.pawns[s].emoji : '')).join(' ')}
+          <span className="tsena-flat-pawns">
+            {pawns.map((pawn, s) => (display.pos[s] === i && !display.out[s] ? <img key={s} src={pawnImage(pawn)} alt={pawnLabel(pawn)} /> : null))}
           </span>
         </li>
       ))}
@@ -51,7 +52,8 @@ export function TsenaView({ view, me, room, act }: GameViewProps) {
   };
 
   const acting = replay.playback ? replay.playback.log.player : null;
-  const flat = <FlatBoard display={replay.display} players={s.players.length} onCell={onCell} />;
+  const pawns = pawnsOf(s.players, room);
+  const flat = <FlatBoard display={replay.display} pawns={pawns} onCell={onCell} />;
 
   return (
     <div className="game-stage tsena">
@@ -63,6 +65,7 @@ export function TsenaView({ view, me, room, act }: GameViewProps) {
             current={replay.current}
             turn={s.turn}
             players={s.players.length}
+            pawns={pawns}
             overview={overview}
             highlight={hops}
             selected={selected}
@@ -82,6 +85,7 @@ export function TsenaView({ view, me, room, act }: GameViewProps) {
         room={room}
         act={play}
         selected={selected}
+        pawns={pawns}
         onSelect={(cell) => {
           setOverview(false);
           setSelected(cell);

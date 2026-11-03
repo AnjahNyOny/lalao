@@ -15,4 +15,6 @@ export interface GameClient {
   /** Applied to the whole UI from the room lobby onwards. */
   theme: Theme;
   View: ComponentType<GameViewProps>;
+  /** For games with pieces: the picture the lobby shows for each one. */
+  pieceImage?: (id: string) => string;
 }

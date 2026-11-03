@@ -621,6 +621,26 @@ export const TSENA_OPTIONS: GameOption[] = [
   },
 ];
 
+/** Pawns players pick in the lobby: models and pictures come from assets/blender/tsena_assets.py. */
+export const PAWNS = [
+  { id: 'zebu', label: 'Zébu' },
+  { id: 'lemur', label: 'Maki catta' },
+  { id: 'chameleon', label: 'Caméléon' },
+  { id: 'taxi', label: 'Taxi-brousse' },
+  { id: 'baobab', label: 'Baobab' },
+  { id: 'pirogue', label: 'Pirogue' },
+  { id: 'pousse', label: 'Pousse-pousse' },
+  { id: 'valiha', label: 'Valiha' },
+  { id: 'tortoise', label: 'Tortue radiée' },
+  { id: 'fossa', label: 'Fossa' },
+  { id: 'ayeaye', label: 'Aye-aye' },
+  { id: 'indri', label: 'Indri' },
+  { id: 'sifaka', label: 'Propithèque' },
+  { id: 'tenrec', label: 'Tenrec' },
+  { id: 'frog', label: 'Grenouille tomate' },
+  { id: 'moth', label: 'Papillon comète' },
+];
+
 /** Reads the lobby's choices, falling back to the defaults on anything unexpected. */
 function endingFrom(options: GameOptions, players: number): { ending: Ending; rounds: number } {
   const pick = <T extends number>(value: string | undefined, choices: readonly T[], fallback: T): T =>
@@ -639,6 +659,7 @@ export const tsena: GameDefinition<TsenaState, TsenaAction, TsenaView> = {
   minPlayers: 2,
   maxPlayers: 4,
   options: TSENA_OPTIONS,
+  pieces: PAWNS,
   // Wait for the last action to finish playing on screen, then a beat.
   botDelayMs: (state) => {
     const busy = replayMs(state.last) + PACE.settle;

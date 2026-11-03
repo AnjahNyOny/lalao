@@ -485,6 +485,171 @@ def whale():
     return a
 
 
+# ---------- More pawns: players pick one in the lobby ----------
+
+def pawn_baobab():
+    a = Asset('pawn_baobab')
+    with a.at(scale=0.42):
+        baobab_parts(a)
+    return a
+
+
+def pawn_pirogue():
+    a = Asset('pawn_pirogue')
+    with a.at(scale=0.62):
+        pirogue_parts(a)
+    return a
+
+
+def pawn_pousse():
+    a = Asset('pawn_pousse')
+    with a.at((0, 0.08, 0), scale=0.6):
+        pousse_parts(a, body='Stripe')
+    return a
+
+
+def pawn_valiha():
+    """The valiha, the bamboo zither, standing on its foot."""
+    a = Asset('pawn_valiha')
+    # Built full size, then scaled: it stands as tall as the other pawns.
+    with a.at(scale=0.8):
+        a.cyl('WoodDark', (0, 0, 0.03), 0.13, 0.14, 0.06, seg=10)
+        a.cyl('Bamboo', (0, 0, 0.42), 0.075, 0.075, 0.72, seg=10)
+        for z in (0.16, 0.44, 0.72):
+            a.cyl('LeafDark', (0, 0, z), 0.082, 0.082, 0.02, seg=10)
+        # Strings round the front half, each on its little bridge.
+        for i in range(9):
+            ang = math.radians(-165 + i * 18.75)
+            x, y = math.cos(ang) * 0.081, math.sin(ang) * 0.081
+            a.cyl('Cream', (x, y, 0.44), 0.004, 0.004, 0.58, seg=3)
+            a.cube('Wood', (x * 1.06, y * 1.06, 0.2 + (i % 3) * 0.025), (0.014, 0.014, 0.02))
+        a.cyl('Stripe', (0, 0, 0.8), 0.078, 0.065, 0.04, seg=10)
+    return a
+
+
+def pawn_tortoise():
+    """A radiated tortoise: dark dome, yellow star pattern."""
+    a = Asset('pawn_tortoise')
+    c, r = Vector((0, 0.02, 0.13)), Vector((0.21, 0.26, 0.17))
+    a.ball('Vanilla', c, r, sub=2)
+    a.ball('Sand', (0, 0.02, 0.07), (0.22, 0.27, 0.05), sub=1)
+    spots = [(0, 0)] + [(0.8, k / 6 * math.tau) for k in range(6)] + [(1.25, (k + 0.5) / 8 * math.tau) for k in range(8)]
+    for theta, phi in spots:
+        p = c + Vector((r.x * math.sin(theta) * math.cos(phi), r.y * math.sin(theta) * math.sin(phi), r.z * math.cos(theta)))
+        a.ball('Yellow', p, (0.04, 0.04, 0.04), sub=1)
+    a.cyl('Sand', (0, -0.25, 0.11), 0.045, 0.04, 0.12, seg=6, rot=(math.pi / 2 - 0.4, 0, 0))
+    a.ball('Sand', (0, -0.31, 0.15), (0.055, 0.06, 0.05), sub=1)
+    for s in (-1, 1):
+        a.ball('Black', (s * 0.04, -0.35, 0.165), (0.01, 0.01, 0.01), sub=0)
+        for y in (-0.14, 0.16):
+            a.cyl('Sand', (s * 0.16, y, 0.04), 0.04, 0.035, 0.08, seg=6)
+    return a
+
+
+def pawn_fossa():
+    a = Asset('pawn_fossa')
+    with a.at((0, 0.05, 0), (0, 0, -math.pi / 2), 1.15):
+        fossa_parts(a)
+    return a
+
+
+def pawn_ayeaye():
+    """The aye-aye sitting up: huge ears, huge eyes, bushy tail."""
+    a = Asset('pawn_ayeaye')
+    a.ball('Black', (0, 0.03, 0.2), (0.13, 0.12, 0.18), sub=2)
+    a.ball('Grey', (0, -0.04, 0.43), (0.1, 0.09, 0.09), sub=2)
+    a.ball('Grey', (0, -0.11, 0.4), (0.05, 0.05, 0.04), sub=1)
+    for s in (-1, 1):
+        a.ball('Black', (s * 0.12, 0.0, 0.55), (0.035, 0.075, 0.09), sub=1, rot=(0, s * 0.5, 0))
+        a.ball('Amber', (s * 0.045, -0.115, 0.46), (0.032, 0.032, 0.032), sub=1)
+        a.ball('Black', (s * 0.047, -0.14, 0.465), (0.014, 0.014, 0.014), sub=0)
+        a.along('Black', (s * 0.09, -0.05, 0.27), (s * 0.11, -0.15, 0.09), 0.025, 0.012, seg=4)
+        a.along('Black', (s * 0.11, -0.15, 0.09), (s * 0.11, -0.2, 0.03), 0.008, 0.004, seg=3)
+        a.ball('Black', (s * 0.08, -0.06, 0.03), (0.05, 0.07, 0.03), sub=1)
+    a.along('Grey', (0, 0.12, 0.12), (0, 0.27, 0.42), 0.06, 0.085, seg=7)
+    a.ball('Grey', (0, 0.27, 0.46), (0.085, 0.085, 0.09), sub=1)
+    return a
+
+
+def pawn_indri():
+    """The indri sitting upright: black and white, teddy-bear ears."""
+    a = Asset('pawn_indri')
+    a.ball('Black', (0, 0.02, 0.3), (0.11, 0.1, 0.19), sub=2)
+    a.ball('White', (0, -0.02, 0.13), (0.11, 0.09, 0.1), sub=1)
+    a.ball('White', (0, 0.04, 0.5), (0.1, 0.09, 0.07), sub=1)
+    a.ball('Black', (0, -0.02, 0.55), (0.08, 0.08, 0.08), sub=2)
+    a.ball('Black', (0, -0.09, 0.53), (0.04, 0.035, 0.035), sub=1)
+    for s in (-1, 1):
+        a.ball('Black', (s * 0.065, 0.0, 0.63), (0.03, 0.018, 0.03), sub=1)
+        a.ball('Green', (s * 0.03, -0.085, 0.57), (0.014, 0.014, 0.014), sub=0)
+        a.along('Black', (s * 0.1, -0.02, 0.42), (s * 0.12, -0.08, 0.22), 0.032, 0.025, seg=5)
+        a.along('White', (s * 0.07, -0.02, 0.12), (s * 0.08, -0.12, 0.03), 0.04, 0.03, seg=5)
+        a.ball('Black', (s * 0.08, -0.13, 0.02), (0.035, 0.05, 0.02), sub=1)
+    return a
+
+
+def pawn_sifaka():
+    a = Asset('pawn_sifaka')
+    with a.at((0, 0.02, 0), (0, 0, -math.pi / 2), 0.95):
+        sifaka_parts(a)
+    return a
+
+
+def pawn_tenrec():
+    """A streaked tenrec: black and yellow, a crest of quills."""
+    a = Asset('pawn_tenrec')
+    c, r = Vector((0, 0.04, 0.14)), Vector((0.15, 0.2, 0.13))
+    a.ball('Black', c, r, sub=2)
+    for k in range(5):
+        y = -0.1 + k * 0.06
+        a.ball('Yellow', (0, y + 0.04, 0.26 - abs(y) * 0.2), (0.12 - abs(y) * 0.2, 0.025, 0.02), sub=1)
+    for k in range(16):
+        phi = k / 16 * math.tau
+        theta = 0.45 + (k % 2) * 0.35
+        n = Vector((math.sin(theta) * math.cos(phi), math.sin(theta) * math.sin(phi) + 0.2, math.cos(theta))).normalized()
+        base = c + Vector((n.x * r.x, n.y * r.y, n.z * r.z)) * 0.95
+        a.along('Yellow' if k % 3 else 'Black', base, base + n * 0.1, 0.012, 0.0, seg=4)
+    a.along('Black', (0, -0.14, 0.13), (0, -0.3, 0.08), 0.06, 0.02, seg=6)
+    a.ball('Tomato', (0, -0.305, 0.08), (0.018, 0.018, 0.018), sub=0)
+    for s in (-1, 1):
+        a.ball('Amber', (s * 0.05, -0.19, 0.15), (0.014, 0.014, 0.014), sub=0)
+        for y in (-0.1, 0.14):
+            a.ball('Black', (s * 0.1, y, 0.025), (0.035, 0.045, 0.025), sub=1)
+    return a
+
+
+def pawn_frog():
+    """A tomato frog: round, red, wide-eyed."""
+    a = Asset('pawn_frog')
+    a.ball('Tomato', (0, 0.03, 0.15), (0.2, 0.21, 0.15), sub=2)
+    a.ball('Pod', (0, -0.08, 0.09), (0.15, 0.1, 0.07), sub=1)
+    a.cube('Black', (0, -0.175, 0.16), (0.16, 0.012, 0.01))
+    for s in (-1, 1):
+        a.ball('Tomato', (s * 0.09, -0.08, 0.28), (0.06, 0.06, 0.06), sub=1)
+        a.ball('Black', (s * 0.1, -0.125, 0.3), (0.028, 0.02, 0.03), sub=1)
+        a.along('Tomato', (s * 0.12, -0.1, 0.1), (s * 0.17, -0.2, 0.01), 0.035, 0.03, seg=5)
+        a.ball('Tomato', (s * 0.17, 0.12, 0.06), (0.08, 0.12, 0.06), sub=1)
+    return a
+
+
+def pawn_moth():
+    """A comet moth, long-tailed and yellow, on a flower stem."""
+    a = Asset('pawn_moth')
+    a.cyl('LeafDark', (0, 0.04, 0.2), 0.016, 0.012, 0.4, seg=5)
+    a.ball('Leaf', (0.06, 0.04, 0.08), (0.08, 0.025, 0.035), sub=1, rot=(0, -0.6, 0))
+    a.ball('Leaf', (-0.06, 0.04, 0.14), (0.08, 0.025, 0.035), sub=1, rot=(0, 0.6, 0))
+    a.ball('Fruit', (0, 0.04, 0.41), (0.05, 0.05, 0.025), sub=1)
+    a.ball('White', (0, 0.02, 0.46), (0.03, 0.1, 0.03), sub=1)
+    for s in (-1, 1):
+        a.ball('Yellow', (s * 0.13, -0.03, 0.5), (0.13, 0.09, 0.012), sub=1, rot=(0, -s * 0.45, s * 0.3))
+        a.ball('Yellow', (s * 0.1, 0.08, 0.47), (0.09, 0.08, 0.012), sub=1, rot=(0, -s * 0.35, -s * 0.2))
+        a.ball('Brick', (s * 0.16, -0.04, 0.52), (0.025, 0.025, 0.014), sub=0)
+        a.along('Yellow', (s * 0.07, 0.13, 0.46), (s * 0.12, 0.42, 0.3), 0.025, 0.012, seg=4)
+        a.ball('Pod', (s * 0.12, 0.43, 0.29), (0.025, 0.035, 0.012), sub=0)
+        a.along('Pod', (0, -0.08, 0.47), (s * 0.06, -0.15, 0.53), 0.006, 0.004, seg=3)
+    return a
+
+
 # ---------- Buildings on the sites ----------
 
 def house():
@@ -629,14 +794,13 @@ def roadblock():
 
 # ---------- Landmarks of the sites, in board order ----------
 
-def pousse_pousse():
-    """Antsirabe: the pousse-pousse, the town's rickshaws."""
-    a = Asset('pousse_pousse')
+def pousse_parts(a, body='PousseBlue'):
+    """The rickshaw, shafts to the front (-Y)."""
     for x in (-0.19, 0.19):
         a.cyl('Tire', (x, 0.06, 0.2), 0.2, 0.2, 0.04, seg=12, rot=(0, math.pi / 2, 0))
         a.cyl('White', (x, 0.06, 0.2), 0.05, 0.05, 0.05, seg=6, rot=(0, math.pi / 2, 0))
-    a.cube('PousseBlue', (0, 0.05, 0.3), (0.32, 0.24, 0.14))
-    a.cube('PousseBlue', (0, 0.16, 0.44), (0.32, 0.04, 0.24))
+    a.cube(body, (0, 0.05, 0.3), (0.32, 0.24, 0.14))
+    a.cube(body, (0, 0.16, 0.44), (0.32, 0.04, 0.24))
     a.cube('Cream', (0, 0.0, 0.37), (0.28, 0.16, 0.03))
     a.cube('Cream', (0, 0.1, 0.62), (0.34, 0.24, 0.03), rot=(-0.45, 0, 0))
     a.cube('Stripe', (0, 0.15, 0.3), (0.33, 0.02, 0.06))
@@ -645,6 +809,11 @@ def pousse_pousse():
         a.along('Wood', (x, -0.05, 0.28), (x, -0.62, 0.1), 0.016, 0.014, seg=5)
     a.along('Wood', (-0.13, -0.6, 0.1), (0.13, -0.6, 0.1), 0.012, 0.012, seg=4)
     return a
+
+
+def pousse_pousse():
+    """Antsirabe: the pousse-pousse, the town's rickshaws."""
+    return pousse_parts(Asset('pousse_pousse'))
 
 
 def crater_lake():
@@ -798,7 +967,14 @@ def sifaka():
     a.cyl('Bark', (0.28, 0.28, 0.3), 0.05, 0.035, 0.6, seg=7)
     a.ball('LeafDark', (0.28, 0.28, 0.66), (0.2, 0.18, 0.12), sub=1)
     a.ball('Leaf', (0.36, 0.2, 0.72), (0.12, 0.12, 0.08), sub=1)
-    with a.at((-0.15, -0.1, 0.12)):
+    with a.at((-0.15, -0.1, 0)):
+        sifaka_parts(a)
+    return a
+
+
+def sifaka_parts(a):
+    """A sifaka mid-hop, sideways (towards +X), feet just off the ground."""
+    with a.at((0, 0, 0.12)):
         a.ball('White', (0, 0, 0.32), (0.11, 0.1, 0.18), sub=2, rot=(0, 0.35, 0))
         a.ball('White', (0.06, 0, 0.53), (0.08, 0.08, 0.08), sub=2)
         a.ball('Black', (0.12, 0, 0.52), (0.035, 0.05, 0.045), sub=1)
@@ -891,16 +1067,24 @@ def fossa():
     a = Asset('fossa')
     a.along('Bark', (-0.42, 0.1, 0.07), (0.42, -0.05, 0.08), 0.075, 0.065, seg=7)
     with a.at((0, 0.02, 0.1)):
-        a.ball('Fossa', (0, 0, 0.14), (0.22, 0.08, 0.08), sub=2)
-        a.ball('Fossa', (0.24, 0, 0.19), (0.07, 0.06, 0.06), sub=2)
-        a.cyl('Fossa', (0.31, 0, 0.18), 0.035, 0.015, 0.06, seg=6, rot=(0, math.pi / 2, 0))
-        a.ball('Black', (0.335, 0, 0.18), (0.012, 0.012, 0.012), sub=0)
-        for s in (-1, 1):
-            a.ball('Fossa', (0.23, s * 0.04, 0.25), (0.022, 0.012, 0.028), sub=0)
-            a.ball('Amber', (0.29, s * 0.03, 0.205), (0.013, 0.013, 0.013), sub=0)
-            for x in (-0.14, 0.14):
-                a.cyl('Fossa', (x, s * 0.05, 0.05), 0.025, 0.02, 0.12, seg=5)
-        a.along('Fossa', (-0.2, 0, 0.15), (-0.5, 0, 0.24), 0.035, 0.02, seg=6)
+        fossa_parts(a)
+    return a
+
+
+def fossa_parts(a):
+    """The fosa standing, head towards +X, paws at the origin's level."""
+    a.ball('Fossa', (0, 0, 0.14), (0.22, 0.08, 0.08), sub=2)
+    a.ball('Fossa', (0.24, 0, 0.19), (0.07, 0.06, 0.06), sub=2)
+    a.cyl('Fossa', (0.31, 0, 0.18), 0.035, 0.015, 0.06, seg=6, rot=(0, math.pi / 2, 0))
+    a.ball('Black', (0.335, 0, 0.18), (0.012, 0.012, 0.012), sub=0)
+    for s in (-1, 1):
+        a.ball('Fossa', (0.23, s * 0.04, 0.25), (0.022, 0.012, 0.028), sub=0)
+        a.ball('Amber', (0.29, s * 0.03, 0.205), (0.013, 0.013, 0.013), sub=0)
+        for x in (-0.14, 0.14):
+            a.cyl('Fossa', (x, s * 0.05, 0.05), 0.025, 0.02, 0.12, seg=5)
+    # Long cat-like tail, low and curling up at the tip.
+    a.along('Fossa', (-0.2, 0, 0.14), (-0.4, 0, 0.09), 0.035, 0.03, seg=6)
+    a.along('Fossa', (-0.4, 0, 0.09), (-0.56, 0, 0.15), 0.03, 0.018, seg=6)
     return a
 
 
@@ -1169,7 +1353,8 @@ def stone_gate():
 
 BUILDERS = [
     # Pawns
-    zebu, lemur, chameleon, taxi,
+    zebu, lemur, chameleon, taxi, pawn_baobab, pawn_pirogue, pawn_pousse, pawn_valiha, pawn_tortoise, pawn_fossa,
+    pawn_ayeaye, pawn_indri, pawn_sifaka, pawn_tenrec, pawn_frog, pawn_moth,
     # On the sites
     house, hotel, flag, cage,
     # Special cells
@@ -1204,5 +1389,80 @@ def export(path):
                               export_normals=False, export_texcoords=False)
 
 
-objects = rebuild()
-print('built', len(objects), 'assets,', sum(len(o.data.polygons) for o in objects), 'faces')
+# Pawns players can pick, in the lobby's order (ids are the names without 'pawn_').
+PAWNS = ['pawn_zebu', 'pawn_lemur', 'pawn_chameleon', 'pawn_taxi', 'pawn_baobab', 'pawn_pirogue', 'pawn_pousse',
+         'pawn_valiha', 'pawn_tortoise', 'pawn_fossa', 'pawn_ayeaye', 'pawn_indri', 'pawn_sifaka', 'pawn_tenrec',
+         'pawn_frog', 'pawn_moth']
+
+
+def render_icons(out_dir, names=PAWNS, size=144):
+    """A transparent PNG per pawn, from the front and a little above: the lobby's picker and the HUD use them."""
+    import os
+    scene = bpy.context.scene
+    coll = bpy.data.collections[COLLECTION]
+    cam_data = bpy.data.cameras.get('IconCam') or bpy.data.cameras.new('IconCam')
+    cam = bpy.data.objects.get('IconCam') or bpy.data.objects.new('IconCam', cam_data)
+    sun_data = bpy.data.lights.get('IconSun') or bpy.data.lights.new('IconSun', 'SUN')
+    sun = bpy.data.objects.get('IconSun') or bpy.data.objects.new('IconSun', sun_data)
+    for o in (cam, sun):
+        if o.name not in scene.collection.objects:
+            scene.collection.objects.link(o)
+    cam_data.type = 'ORTHO'
+    sun_data.energy = 3.5
+    sun.rotation_euler = Euler((math.radians(45), 0, math.radians(25)))
+    world = bpy.data.worlds.get('IconWorld') or bpy.data.worlds.new('IconWorld')
+    world.use_nodes = True
+    bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
+    bg.inputs[0].default_value = (0.75, 0.8, 0.85, 1)
+    bg.inputs[1].default_value = 0.7
+
+    r = scene.render
+    vs = scene.view_settings
+    saved = ({o.name: o.hide_render for o in scene.objects}, scene.camera, scene.world, r.engine, r.filepath, vs.view_transform)
+    # The game shows the palette as is: no filmic tone mapping on the icons either.
+    if 'Standard' in [i.identifier for i in vs.bl_rna.properties['view_transform'].enum_items]:
+        vs.view_transform = 'Standard'
+    r.resolution_x = r.resolution_y = size
+    r.resolution_percentage = 100
+    r.film_transparent = True
+    r.image_settings.file_format = 'PNG'
+    r.image_settings.color_mode = 'RGBA'
+    for engine in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'):
+        try:
+            r.engine = engine
+            break
+        except TypeError:
+            continue
+    scene.camera = cam
+    scene.world = world
+    view = Vector((-0.45, 1, -0.5)).normalized()  # where the camera looks: from the front, above, a little to the right
+    right = view.cross(Vector((0, 0, 1))).normalized()
+    up = right.cross(view).normalized()
+    try:
+        # Right after a rebuild, EEVEE's first render comes out empty while shaders compile: render once for nothing.
+        bpy.ops.render.render()
+        for name in names:
+            obj = coll.objects[name]
+            for o in scene.objects:
+                o.hide_render = o not in (obj, cam, sun)
+            corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
+            centre = sum(corners, Vector()) / len(corners)
+            width = max(c.dot(right) for c in corners) - min(c.dot(right) for c in corners)
+            height = max(c.dot(up) for c in corners) - min(c.dot(up) for c in corners)
+            cam.location = centre - view * 10
+            cam.rotation_euler = view.to_track_quat('-Z', 'Y').to_euler()
+            cam_data.ortho_scale = max(width, height) * 1.06
+            r.filepath = os.path.join(out_dir, name.replace('pawn_', '') + '.png')
+            bpy.ops.render.render(write_still=True)
+    finally:
+        hidden, scene.camera, scene.world, r.engine, r.filepath, vs.view_transform = saved
+        for o in scene.objects:
+            if o.name in hidden:
+                o.hide_render = hidden[o.name]
+    return r.engine
+
+
+# exec() rebuilds everything, unless the caller sets KEEP_SCENE to only get the functions (render_icons, export).
+if not globals().get('KEEP_SCENE'):
+    objects = rebuild()
+    print('built', len(objects), 'assets,', sum(len(o.data.polygons) for o in objects), 'faces')

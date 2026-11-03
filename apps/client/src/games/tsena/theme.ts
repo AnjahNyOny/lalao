@@ -34,14 +34,8 @@ export const island = {
   } satisfies Record<Exclude<CellKind, 'site'>, string>,
   /** Band colour of each region's sites (as in REGIONS). */
   regions: ['#c8683f', '#8ab33f', '#e0a030', '#ef7a6a', '#e9c43a', '#8a63b8', '#2a9d8f', '#3d7dd8', '#2f7a45', '#d64f8a', '#7a2e3a'],
+  /** Seat colours: each pawn stands on a disc of its player's colour. */
   players: ['#e63946', '#1f6fe5', '#f5b700', '#8e44ad'],
-  /** Seat order of the pawn models, with an emoji for the HUD. */
-  pawns: [
-    { model: 'pawn_zebu', emoji: '🐂', name: 'zébu' },
-    { model: 'pawn_lemur', emoji: '🐒', name: 'maki' },
-    { model: 'pawn_chameleon', emoji: '🦎', name: 'caméléon' },
-    { model: 'pawn_taxi', emoji: '🚐', name: 'taxi-brousse' },
-  ],
 };
 
 export const tsenaTheme: Theme = {

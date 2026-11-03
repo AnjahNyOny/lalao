@@ -123,6 +123,11 @@ export class Session {
         room.removeBot(this.playerId!, msg.playerId);
         return room.broadcastRoom();
       }
+      case 'setPiece': {
+        const room = this.requireRoom();
+        room.setPiece(this.playerId!, msg.piece);
+        return room.broadcastRoom();
+      }
       case 'setOption': {
         const room = this.requireRoom();
         room.setOption(this.playerId!, msg.id, msg.value);

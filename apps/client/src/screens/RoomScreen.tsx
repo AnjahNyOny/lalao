@@ -58,8 +58,42 @@ function Options({ room, isHost }: { room: RoomInfo; isHost: boolean }) {
   );
 }
 
+/** Each player picks their own piece; the ones others took show who has them. */
+function Pieces({ room, me }: { room: RoomInfo; me: PlayerId }) {
+  const pieces = games[room.gameId].pieces;
+  const image = gameClients[room.gameId]?.pieceImage;
+  if (!pieces?.length || !image) return null;
+  const mine = pieces.find((p) => p.id === room.players.find((pl) => pl.id === me)?.piece);
+  return (
+    <div className="pieces">
+      <span className="muted">Ton pion{mine && ` : ${mine.label}`}</span>
+      <div className="piece-grid" role="radiogroup" aria-label="Ton pion">
+        {pieces.map((piece) => {
+          const owner = room.players.find((p) => p.piece === piece.id);
+          const isMine = owner?.id === me;
+          return (
+            <button
+              key={piece.id}
+              role="radio"
+              aria-checked={isMine}
+              aria-label={owner && !isMine ? `${piece.label}, pris par ${owner.name}` : piece.label}
+              title={piece.label}
+              disabled={!!owner && !isMine}
+              onClick={() => connection.setPiece(piece.id)}
+            >
+              <img src={image(piece.id)} alt="" />
+              {owner && !isMine && <span className="piece-owner">{owner.name}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Waiting({ room, me, solo }: { room: RoomInfo; me: PlayerId; solo: boolean }) {
   const game = games[room.gameId];
+  const pieceImage = gameClients[room.gameId]?.pieceImage;
   const link = useShareLink(room.code, solo);
   const isHost = room.hostId === me;
   const canStart = room.players.length >= game.minPlayers;
@@ -80,6 +114,7 @@ function Waiting({ room, me, solo }: { room: RoomInfo; me: PlayerId; solo: boole
       <ul className="players">
         {room.players.map((p) => (
           <li key={p.id} className={p.connected ? '' : 'offline'}>
+            {p.piece && pieceImage && <img className="player-piece" src={pieceImage(p.piece)} alt="" />}
             {p.name}
             {p.id === room.hostId && <span className="tag">hôte</span>}
             {p.id === me && <span className="tag">toi</span>}
@@ -111,6 +146,7 @@ function Waiting({ room, me, solo }: { room: RoomInfo; me: PlayerId; solo: boole
         </div>
       )}
 
+      <Pieces room={room} me={me} />
       <Options room={room} isHost={isHost} />
 
       {isHost ? (

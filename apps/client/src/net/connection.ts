@@ -92,6 +92,10 @@ export class Connection {
     this.send({ t: 'setOption', id, value });
   }
 
+  setPiece(piece: string): void {
+    this.send({ t: 'setPiece', piece });
+  }
+
   /**
    * A game against bots, entirely offline. Starts straight away, unless the
    * game has options to choose: then the player sees the lobby first.

@@ -226,3 +226,44 @@ describe('game options', () => {
     expect(a.last('game')!.result).toEqual({ kind: 'draw' });
   });
 });
+
+describe('pieces', () => {
+  const tokens: GameDefinition<{ players: string[] }, never> = {
+    id: 'tokens',
+    name: 'Tokens',
+    minPlayers: 2,
+    maxPlayers: 3,
+    pieces: [
+      { id: 'zebu', label: 'Zébu' },
+      { id: 'lemur', label: 'Maki' },
+      { id: 'frog', label: 'Grenouille' },
+    ],
+    setup: (players) => ({ players }),
+    validate: (_s, _a): _a is never => false,
+    apply: (s) => s,
+    result: () => null,
+    bot: () => null,
+  };
+
+  it('gives newcomers the first free piece, each one taken once', () => {
+    const lobby = new Lobby({ tokens });
+    const [a, b] = [client(lobby), client(lobby)];
+    a.session.receive({ t: 'create', name: 'A', gameId: 'tokens' });
+    b.session.receive({ t: 'join', code: a.last('welcome')!.code, name: 'B' });
+    expect(b.last('room')!.room.players.map((p) => p.piece)).toEqual(['zebu', 'lemur']);
+
+    b.session.receive({ t: 'setPiece', piece: 'zebu' });
+    expect(b.last('error')!.message).toMatch(/déjà pris/);
+    b.session.receive({ t: 'setPiece', piece: 'dragon' });
+    expect(b.last('error')!.message).toMatch(/inconnu/);
+    b.session.receive({ t: 'setPiece', piece: 'frog' });
+    expect(a.last('room')!.room.players.map((p) => p.piece)).toEqual(['zebu', 'frog']);
+
+    // A bot takes whatever is left.
+    a.session.receive({ t: 'addBot', level: 'easy' });
+    expect(a.last('room')!.room.players[2].piece).toBe('lemur');
+    a.session.receive({ t: 'start' });
+    b.session.receive({ t: 'setPiece', piece: 'lemur' });
+    expect(b.last('error')!.message).toMatch(/en cours/);
+  });
+});

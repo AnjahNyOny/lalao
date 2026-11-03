@@ -28,6 +28,7 @@ Modèle de référence : `packages/games/src/connect4/index.ts`.
 - Hasard : `mulberry32(seed)` de `@game/core`. Si le hasard intervient pendant la partie (dés…), stocker l'état du générateur dans `State`.
 - Temps réel : `tick(state, dtMs)` est appelé à 20 Hz par le serveur ; le client interpole.
 - Si le jeu a plusieurs façons de jouer ou de finir (durée, mode), les déclarer dans `options` : l'hôte les choisit dans le salon, `setup(players, seed, options)` les reçoit. Le modèle est `TSENA_OPTIONS`. Une limite de temps passe par `clock(state, ms)`, jamais par `Date.now()` dans les règles.
+- Si les joueurs choisissent une pièce ou un pion, les lister dans `pieces` ; le client fournit `pieceImage` (voir Tsena et ses vignettes rendues dans Blender).
 - Enregistrer le jeu dans `packages/games/src/index.ts`.
 
 ## 2. Tests — `packages/games/src/<id>/<id>.test.ts`

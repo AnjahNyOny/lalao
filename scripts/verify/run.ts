@@ -208,6 +208,16 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
   await shot(host, '2-salon');
   report(true, 'salon', `code ${code}, ${players.length} joueurs`);
 
+  if (game.pieces?.length) {
+    // The guest picks the last pawn (free: newcomers take the first ones) by a real click.
+    const g = guests[0];
+    await g.page.locator('.piece-grid button').last().click();
+    await g.page.waitForSelector('.piece-grid button:last-child[aria-checked="true"]');
+    const broken = await g.page.$$eval('.piece-grid img', (imgs) => imgs.filter((i) => !(i as HTMLImageElement).naturalWidth).length);
+    const piece = await host.page.evaluate(() => window.__lalao!.state().room!.players.map((p) => p.piece).join(', '));
+    await shot(g, '2-salon-pions');
+    report(broken === 0, 'pions : choisis au clic, images chargées', `${piece} ; ${broken} image(s) cassée(s)`);
+  }
   if (game.options?.length) {
     const picked = await pickOptions(host.page);
     // The guest sees the host's choices once the server has passed them on.

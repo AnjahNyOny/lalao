@@ -19,6 +19,12 @@ export interface GameOption {
   when?: { option: string; values: string[] };
 }
 
+/** A piece a player can pick in the lobby (a pawn, a token…): cosmetic, each one taken once per room. */
+export interface GamePiece {
+  id: string;
+  label: string;
+}
+
 /** Option id → chosen value. Plain strings: they travel over the network. */
 export type GameOptions = Record<string, string>;
 
@@ -39,6 +45,8 @@ export interface GameDefinition<State = unknown, Action = unknown, View = State>
   setup(players: PlayerId[], seed: number, options?: GameOptions): State;
   /** Choices offered in the lobby; `setup` receives them. */
   options?: GameOption[];
+  /** Pieces players choose from in the lobby. The rules never see them: the view reads them from the room. */
+  pieces?: GamePiece[];
   /** `action` comes straight off the network: check its shape too. */
   validate(state: State, action: unknown, by: PlayerId): action is Action;
   apply(state: State, action: Action, by: PlayerId): State;

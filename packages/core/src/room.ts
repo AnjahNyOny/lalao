@@ -17,6 +17,8 @@ export interface Member {
   transport: Transport | null;
   /** Set for computer players, which never have a transport. */
   bot?: BotLevel;
+  /** For games with pieces: unique in the room. */
+  piece?: string;
 }
 
 export interface RoomOptions {
@@ -94,7 +96,10 @@ export class Room {
     if (!this.game.bot) throw new RoomError("Ce jeu n'a pas encore de bot");
     const taken = new Set(this.members.map((m) => m.name));
     const name = BOT_NAMES.find((n) => !taken.has(`🤖 ${n}`)) ?? 'Bot';
-    return this.seat({ id: randomId(8), name: `🤖 ${name}`, token: randomId(24), transport: null, bot: level });
+    // A bot takes a free piece at random, so solo games don't always look the same.
+    const free = this.freePieces();
+    const piece = free.length ? free[Math.floor(this.botRand() * free.length)] : undefined;
+    return this.seat({ id: randomId(8), name: `🤖 ${name}`, token: randomId(24), transport: null, bot: level, piece });
   }
 
   removeBot(by: PlayerId, botId: PlayerId): void {
@@ -103,6 +108,16 @@ export class Room {
     const i = this.members.findIndex((m) => m.id === botId && m.bot);
     if (i < 0) throw new RoomError('Bot introuvable');
     this.members.splice(i, 1);
+  }
+
+  /** A player's own piece, between games: one the game declares, that nobody else has. */
+  setPiece(by: PlayerId, piece: string): void {
+    const member = this.members.find((m) => m.id === by);
+    if (!member) throw new RoomError('Joueur inconnu');
+    if (this.status === 'playing') throw new RoomError('La partie est déjà en cours');
+    if (!this.game.pieces?.some((p) => p.id === piece)) throw new RoomError('Pion inconnu');
+    if (this.members.some((m) => m !== member && m.piece === piece)) throw new RoomError('Ce pion est déjà pris');
+    member.piece = piece;
   }
 
   /** Host only, between games: one of the choices the game declares. */
@@ -172,6 +187,7 @@ export class Room {
         seat: m.seat,
         connected: !!m.transport || !!m.bot,
         ...(m.bot && { bot: m.bot }),
+        ...(m.piece && { piece: m.piece }),
       })),
       options: { ...this.options },
     };
@@ -195,12 +211,19 @@ export class Room {
     return this.game.viewFor ? this.game.viewFor(this.state, member.id) : this.state;
   }
 
+  /** Pieces nobody in the room has yet, in the game's order. */
+  private freePieces(): string[] {
+    const taken = new Set(this.members.map((m) => m.piece));
+    return (this.game.pieces ?? []).map((p) => p.id).filter((id) => !taken.has(id));
+  }
+
   private seat(member: Omit<Member, 'seat'>): Member {
     if (this.members.length >= this.game.maxPlayers) throw new RoomError('Le salon est complet');
     const taken = new Set(this.members.map((m) => m.seat));
     let seat = 0;
     while (taken.has(seat)) seat++;
-    const seated = { ...member, seat };
+    // Newcomers get the first free piece; they can change it in the lobby.
+    const seated = { ...member, seat, piece: member.piece ?? this.freePieces()[0] };
     this.members.push(seated);
     this.members.sort((a, b) => a.seat - b.seat);
     return seated;

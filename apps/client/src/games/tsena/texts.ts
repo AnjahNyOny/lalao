@@ -29,7 +29,11 @@ export interface SiteInfo {
   famous: string;
 }
 
-/** What every site is known for, and the landmark standing beside its cell. */
+/**
+ * What every site is known for, and the landmark standing beside its cell.
+ * Icons are single emoji: a joined one (🏴‍☠️) contains U+200D, which sends the
+ * browser after Baloo 2's Devanagari subset, and offline that request fails.
+ */
 export const SITES: Record<string, SiteInfo> = {
   Antsirabe: { model: 'pousse_pousse', icon: '🛺', monument: 'L’Hôtel des Thermes', famous: 'La ville d’eaux et ses pousse-pousse de toutes les couleurs.' },
   'Lac Tritriva': { model: 'crater_lake', icon: '💧', monument: 'Le lac de cratère', famous: 'Une eau vert émeraude au fond d’un volcan, et la légende de deux amants.' },
@@ -56,7 +60,7 @@ export const SITES: Record<string, SiteInfo> = {
   Sambava: { model: 'vanilla', icon: '🌿', monument: 'Les vanilleraies', famous: 'La capitale de la vanille, la plus réputée du monde.' },
   Marojejy: { model: 'peaks', icon: '⛰️', monument: 'Le massif du Marojejy', famous: 'Des sommets dans les nuages et le propithèque soyeux.' },
   Masoala: { model: 'aye_aye', icon: '🌴', monument: 'Le parc de Masoala', famous: 'La plus grande forêt tropicale de l’île, royaume de l’aye-aye.' },
-  'Nosy Boraha': { model: 'pirate_cemetery', icon: '🏴‍☠️', monument: 'Le cimetière des pirates', famous: 'Sainte-Marie : les baleines à bosse en hiver austral, et l’ancien repaire des pirates.' },
+  'Nosy Boraha': { model: 'pirate_cemetery', icon: '☠️', monument: 'Le cimetière des pirates', famous: 'Sainte-Marie : les baleines à bosse en hiver austral, et l’ancien repaire des pirates.' },
   Toamasina: { model: 'port_crane', icon: '🚢', monument: 'Le grand port', famous: 'Premier port du pays, et capitale du litchi.' },
   Andasibe: { model: 'indri', icon: '🎶', monument: 'Le parc d’Andasibe', famous: 'Le chant de l’indri, le plus grand des lémuriens.' },
   'Lac Anosy': { model: 'anosy', icon: '💜', monument: 'Le monument aux morts', famous: 'Le lac en forme de cœur, son ange noir et les jacarandas en fleur.' },

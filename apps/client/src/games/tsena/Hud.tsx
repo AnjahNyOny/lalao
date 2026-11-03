@@ -30,6 +30,7 @@ import {
   type TsenaView as View,
 } from '@game/games/tsena';
 import { useEffect, useState, type ReactNode } from 'react';
+import { pawnImage, pawnLabel } from './pawns';
 import type { Shown } from './replay';
 import { island } from './theme';
 import { ar, CARD_TEXT, cellName, DECK_LABEL, describe, KIND_HELP, KIND_ICON, KIND_LABEL, regionName, siteOf } from './texts';
@@ -46,6 +47,8 @@ export interface HudProps {
   act: (action: TsenaAction) => void;
   selected: number | null;
   onSelect: (cell: number | null) => void;
+  /** Each seat's pawn id. */
+  pawns: string[];
   overview: boolean;
   onOverview: () => void;
 }
@@ -132,7 +135,7 @@ export function Hud(p: HudProps) {
       </p>
     );
   } else if (s.over) {
-    panel = <Ranking s={s} name={name} />;
+    panel = <Ranking s={s} name={name} pawns={p.pawns} />;
   } else if (s.pending?.kind === 'offer' && !p.busy) {
     panel = <Offer s={s} offer={s.pending} seat={seat} name={name} send={send} disabled={sent} />;
   } else if (p.selected !== null) {
@@ -170,7 +173,7 @@ export function Hud(p: HudProps) {
               style={{ ['--seat' as string]: island.players[i] }}
             >
               <span className="tsena-avatar">
-                <span aria-hidden>{island.pawns[i].emoji}</span>
+                <img src={pawnImage(p.pawns[i])} alt={pawnLabel(p.pawns[i])} />
                 {/* Small badges on the avatar, so the cash always fits. */}
                 {display.jail[i] > 0 && (
                   <span className="tsena-badge jail" title="Au fonja" aria-label="Au fonja">
@@ -591,14 +594,14 @@ function Rules({ s, onClose }: { s: View; onClose: () => void }) {
   );
 }
 
-function Ranking({ s, name }: { s: View; name: (i: number) => string }) {
+function Ranking({ s, name, pawns }: { s: View; name: (i: number) => string; pawns: string[] }) {
   const rows = s.players.map((_, i) => ({ i, worth: s.out[i] ? -1 : worthOf(s, i) })).sort((a, b) => b.worth - a.worth);
   return (
     <ol className="tsena-ranking">
       {rows.map(({ i, worth }) => (
         <li key={i} style={{ ['--seat' as string]: island.players[i] }}>
           <span>
-            {island.pawns[i].emoji} {name(i)}
+            <img src={pawnImage(pawns[i])} alt="" /> {name(i)}
           </span>
           <b>{worth < 0 ? 'ruiné' : ar(worth)}</b>
         </li>
