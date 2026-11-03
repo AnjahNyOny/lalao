@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { BOT_LABELS } from '../botLabels';
 import { gameClients } from '../games';
 import { connection } from '../net/connection';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 /** A link other devices can open: swaps localhost for this machine's LAN address. */
 function useShareLink(code: string): string {
@@ -114,7 +115,15 @@ export function RoomScreen({ room, me, game }: { room: RoomInfo; me: PlayerId; g
       </button>
       {game && client ? (
         <>
-          <client.View view={game.view} me={me} room={room} act={(a) => connection.act(a)} />
+          <ErrorBoundary
+            fallback={
+              <main className="screen lobby">
+                <p>Ce jeu ne peut pas s'afficher sur cet appareil (affichage 3D indisponible).</p>
+              </main>
+            }
+          >
+            <client.View view={game.view} me={me} room={room} act={(a) => connection.act(a)} />
+          </ErrorBoundary>
           {game.result && <ResultBanner result={game.result} room={room} me={me} />}
         </>
       ) : (

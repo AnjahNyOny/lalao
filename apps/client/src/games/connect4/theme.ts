@@ -1,14 +1,16 @@
 import type { Theme } from '../../theme/theme';
 
-/** Toy-box pastel: a sunny afternoon game on the lawn. */
+/** Toy-box cartoon: a chunky plastic board on a sunny lawn. */
 export const connect4Scene = {
   sky: '#bfe3f5',
-  ground: '#9fd49a',
-  hemiSky: '#fff8ec',
-  hemiGround: '#7fae7a',
+  skyLow: '#e4f4fb',
+  grass: '#9fd49a',
+  grassDark: '#7fbf7a',
   board: '#3d6fd9',
-  boardFeet: '#2f57b0',
+  boardDark: '#2a4f9e',
+  outline: '#1d2b4f',
   discs: ['#ff6b6b', '#ffc93c'] as const,
+  discsDark: ['#d94848', '#e0a514'] as const,
 };
 
 export const connect4Theme: Theme = {

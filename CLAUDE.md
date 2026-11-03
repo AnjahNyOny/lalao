@@ -31,19 +31,23 @@ Règles qui tiennent l'architecture :
 - **Information cachée** (mains, pioches) : filtrer avec `viewFor`. Une vue ne doit jamais contenir ce que le joueur n'a pas le droit de voir.
 - Le client ne réimplémente pas les règles : il affiche la vue reçue. Pour un retour immédiat, préférer une anticipation visuelle (jeton fantôme…) à une prédiction d'état.
 - `window.__lalao` (client) expose l'état et `act` pour les tests automatisés.
-- **Bots** : `GameDefinition.bot(view, me, level, rand)`, joués par `Room` après un délai (700 à 1200 ms). Ce sont des membres sans transport : ils ne gardent pas un salon vivant à eux seuls.
+- **Bots** : `GameDefinition.bot(view, me, level, rand)`, joués par `Room` après un délai (700 à 1200 ms, ou `botDelayMs`, qui peut dépendre de l'état : Tsena attend la fin du rejeu avec `replayMs`). Ce sont des membres sans transport : ils ne gardent pas un salon vivant à eux seuls.
 - **Solo hors ligne** : `connection.playSolo` fait tourner un `Lobby` dans la page (aucun serveur). Les messages passent quand même par un aller-retour JSON asynchrone, pour se comporter comme le réseau.
 
 ## Ajouter un jeu
 
-Utiliser la skill `/nouveau-jeu`. Elle couvre les règles, les tests, la vue 3D, l'enregistrement et la vérification.
+Utiliser la skill `/nouveau-jeu`. Elle couvre les règles, les tests, le bot, la vue (2D par défaut), le thème, l'enregistrement et la vérification.
 
 ## Style visuel
 
-- Low-poly : `flatShading`, peu de segments (8 à 14), formes générées en code en priorité ; assets CC0 (Kenney, Quaternius, Poly Pizza) pour les personnages et décors.
+- **Jeux en 2D par défaut** (SVG + React), chacun avec un style fort : 4 en ligne en jouet cartoon, Serpents & échelles en papier, stylo et crayon. **Tsena** (propriétés à Madagascar) est en 3D, à la demande de l'utilisateur : React Three Fiber, caméra qui suit le pion, modèles Blender. Pour la 3D : `flatShading`, 8 à 14 segments, modèles faits par script ou assets CC0.
+- Tout ce qui demande WebGL passe par `hasWebGL()` / `ErrorBoundary` (`ui/ErrorBoundary.tsx`) : sans WebGL, l'app doit rester utilisable.
+- Animations 2D : rejouer le `last` / journal envoyé par les règles (voir `useReplay` dans `games/snakes`), sauter au présent si on a pris du retard.
 - Menu principal : **rétro arcade** (`apps/client/src/theme/arcade.ts` et `ArcadeBackdrop.tsx`). Chaque jeu a son propre thème, appliqué dès l'entrée dans son salon. Tous les styles passent par les variables CSS de `ThemeVar` (`theme/theme.ts`) : aucune couleur codée en dur dans `styles.css` en dehors des décorations `[data-theme='…']`.
 - Polices embarquées via `@fontsource` (jamais de CDN) : le mode local doit marcher sans internet.
-- Modèles 3D : sources `.blend` dans `assets/blender/`, exports `.glb` dans `apps/client/public/models/` (MCP Blender disponible).
+- Modèles 3D : sources `.blend` dans `assets/blender/`, exports `.glb` dans `apps/client/public/models/` (MCP Blender disponible). Ceux de Tsena sortent de `assets/blender/tsena_assets.py` (un monument par site) : le relancer dans Blender puis appeler `export(...)`. Un `.glb` de jeu se précharge au démarrage (`useLoader.preload`), sinon le solo hors ligne n'a pas ses modèles.
+- Tsena : l'ordre des cases (`packages/games/src/tsena/board.ts`) et la route sur l'île (`games/tsena/map.ts`) vont ensemble. Après un changement de l'un ou de l'autre, vérifier sur la carte qu'aucune tuile n'en chevauche une autre, que rien ne tombe dans la mer et que chaque site reste près de sa vraie ville.
+- Animations CSS : ne jamais faire partir un texte utile de `opacity: 0`. Sur un appareil lent (ou en WebGL logiciel), l'animation n'avance pas et le texte reste invisible.
 - Toujours penser **mobile portrait d'abord** : zones tactiles ≥ 44 px, `env(safe-area-inset-*)`, caméra qui cadre le plateau quel que soit le ratio.
 
 ## Vérifier avant de dire « c'est fait »

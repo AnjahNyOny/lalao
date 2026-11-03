@@ -20,7 +20,7 @@ export interface Member {
 }
 
 export interface RoomOptions {
-  /** Bots wait a random time in this range before playing, so humans can follow. */
+  /** Bots wait a random time in this range before playing (overrides the game's own pace; for tests). */
   botDelayMs?: [number, number];
 }
 
@@ -44,15 +44,12 @@ export class Room {
   private version = 0;
   private botTimer: ReturnType<typeof setTimeout> | null = null;
   private botRand = mulberry32(randomSeed());
-  private botDelay: [number, number];
 
   constructor(
     readonly code: string,
     readonly game: AnyGame,
-    options: RoomOptions = {},
-  ) {
-    this.botDelay = options.botDelayMs ?? DEFAULT_BOT_DELAY;
-  }
+    private readonly options: RoomOptions = {},
+  ) {}
 
   /** No human connected. Bots alone don't keep a room alive. */
   get isEmpty(): boolean {
@@ -206,7 +203,7 @@ export class Room {
     if (this.botTimer || !this.game.bot) return;
     const bot = this.members.find((m) => m.bot && this.botAction(m) !== null);
     if (!bot) return;
-    const [min, max] = this.botDelay;
+    const [min, max] = this.botDelay();
     const version = this.version;
     this.botTimer = setTimeout(() => {
       this.botTimer = null;
@@ -222,6 +219,11 @@ export class Room {
         console.error(`[${this.game.id}] bot ${bot.bot} a proposé un coup invalide`, action);
       }
     }, min + this.botRand() * (max - min));
+  }
+
+  private botDelay(): [number, number] {
+    const pace = this.options.botDelayMs ?? this.game.botDelayMs ?? DEFAULT_BOT_DELAY;
+    return typeof pace === 'function' ? pace(this.state) : pace;
   }
 
   private botAction(bot: Member): unknown | null {

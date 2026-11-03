@@ -90,6 +90,9 @@ async function newPlayer(browser: Browser, label: string, mobile: boolean): Prom
   return { page, label, errors };
 }
 
+/** Works for 3D (canvas) and 2D (SVG/HTML) games alike. */
+const waitForGame = (p: Player) => p.page.waitForFunction(() => window.__lalao!.state().game !== null);
+
 const lalao = (p: Player) =>
   p.page.evaluate(() => {
     const s = window.__lalao!.state();
@@ -111,11 +114,11 @@ async function verifySolo(browser: Browser, gameId: string): Promise<void> {
   await p.page.click('.segmented.level button:has-text("Difficile")');
   await p.page.screenshot({ path: path.join(dir, '5-solo-menu-mobile.png') });
   await p.page.click(`.game-tile:has-text("${game.name}")`);
-  await p.page.waitForSelector('canvas');
+  await waitForGame(p);
 
   let result = null;
   let mine = 0;
-  for (let i = 0; i < MAX_TURNS * 4 && !result; i++) {
+  for (let i = 0; i < MAX_TURNS * 16 && !result; i++) {
     const s = await lalao(p);
     result = s.game?.result ?? null;
     const action = !result && s.game && s.me ? choose(s.game.view, s.me) : null;
@@ -184,12 +187,12 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
   report(true, 'salon', `code ${code}, ${players.length} joueurs`);
 
   await host.page.click('button:has-text("Lancer la partie")');
-  for (const p of players) await p.page.waitForSelector('canvas');
+  for (const p of players) await waitForGame(p);
   await host.page.waitForTimeout(1000);
   for (const p of players.slice(0, 2)) {
     await shot(p, '3-debut');
-    const stats = await pixelStats(browser, await p.page.locator('canvas').screenshot());
-    report(stats.colors >= 8 && stats.dominant < 0.95, `canvas non vide (${p.label})`, `${stats.colors} couleurs, dominante ${(stats.dominant * 100).toFixed(0)} %`);
+    const stats = await pixelStats(browser, await p.page.screenshot());
+    report(stats.colors >= 8 && stats.dominant < 0.95, `écran de jeu non vide (${p.label})`, `${stats.colors} couleurs, dominante ${(stats.dominant * 100).toFixed(0)} %`);
   }
 
   let turns = 0;

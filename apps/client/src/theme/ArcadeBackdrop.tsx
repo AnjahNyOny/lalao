@@ -2,6 +2,7 @@ import { mulberry32 } from '@game/core';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { ErrorBoundary, hasWebGL } from '../ui/ErrorBoundary';
 import { NEON } from './arcade';
 
 const GRID_SIZE = 80;
@@ -124,6 +125,17 @@ function Stars() {
 
 /** Synthwave scenery behind the main menu. Purely decorative: no pointer events. */
 export function ArcadeBackdrop() {
+  // Without WebGL, a flat neon gradient stands in for the 3D scene.
+  const flat = <div className="backdrop backdrop-flat" aria-hidden />;
+  if (!hasWebGL()) return flat;
+  return (
+    <ErrorBoundary fallback={flat}>
+      <Scene />
+    </ErrorBoundary>
+  );
+}
+
+function Scene() {
   return (
     <div className="backdrop" aria-hidden>
       <Canvas

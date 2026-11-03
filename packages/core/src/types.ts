@@ -33,6 +33,11 @@ export interface GameDefinition<State = unknown, Action = unknown, View = State>
    * `rand` is the only allowed source of randomness.
    */
   bot?(view: View, me: PlayerId, level: BotLevel, rand: () => number): Action | null;
+  /**
+   * How long bots wait before acting, so they don't outrun the game's animations.
+   * A function lets the wait follow what just happened (a long walk, a short choice).
+   */
+  botDelayMs?: [number, number] | ((state: State) => [number, number]);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

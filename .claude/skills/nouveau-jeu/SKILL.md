@@ -1,6 +1,6 @@
 ---
 name: nouveau-jeu
-description: Ajouter un mini-jeu à Lalao de bout en bout (règles pures + tests, vue 3D low-poly, thème, enregistrement, scénario de vérification). À utiliser dès qu'on crée un nouveau jeu ou qu'on reprend un jeu existant en profondeur.
+description: Ajouter un mini-jeu à Lalao de bout en bout (règles pures + tests, bot, vue 2D par défaut ou 3D sur demande, thème, enregistrement, scénario de vérification). À utiliser dès qu'on crée un nouveau jeu ou qu'on reprend un jeu existant en profondeur.
 ---
 
 # Nouveau jeu Lalao
@@ -44,14 +44,16 @@ Modèle : `connect4/bot.ts`. Se branche via `bot` sur la `GameDefinition` ; sans
 
 ## 3. Vue — `apps/client/src/games/<id>/<Id>View.tsx`
 
-Modèle de référence : `apps/client/src/games/connect4/Connect4View.tsx`. Props : `GameViewProps` (`view`, `me`, `room`, `act`).
+Props : `GameViewProps` (`view`, `me`, `room`, `act`). **Par défaut en 2D** (choix de l'utilisateur pour l'instant) : modèle `apps/client/src/games/snakes/` (SVG). Autre modèle 2D, plus simple : `connect4/` (jetons qui tombent derrière un plateau masqué). La 3D reste possible sur demande : modèle `games/tsena/` (`Scene.tsx` : caméra et ombres qui suivent le pion, décor en `InstancedMesh` ; `assets.tsx` : `.glb` Blender préchargé, matériau `Owner` repeint à la couleur du joueur ; `replay.ts` : journal rejoué, lu à chaque frame).
 
-- **Low-poly** : `flatShading`, 8 à 14 segments, géométries générées en code ; matériaux `meshStandardMaterial`.
-- **Caméra** : cadre le plateau en portrait **et** en paysage (calcul à partir de l'aspect, comme `CameraRig`).
+- **2D (SVG)** : le décor statique dans un `memo` sur son propre calque, les pièces animées sur un calque au-dessus (pas de repaint des filtres). Un style dessiné et fort par jeu (filtres `feTurbulence`/`feDisplacementMap`, motifs, polices `@fontsource` ajoutées dans `main.tsx`, préchargement compris).
+- **Cadrage** : le plateau tient en portrait **et** en paysage (`container-type: size` + unités `cq`, ou `CameraRig` en 3D). En portrait : infos en haut, plateau, commandes en bas sous le pouce.
+- **Animations** : si les règles produisent plusieurs étapes par coup, mettre un journal (`last`, avec `seq`) dans l'état et le rejouer côté client ; régler `botDelayMs` sur la durée des animations.
+- **3D** (si demandé) : `flatShading`, 8 à 14 segments, `hasWebGL()` + `ErrorBoundary`, et une vue de secours sans WebGL qui reste jouable (Tsena : la route en liste, le HUD inchangé). Modèles par script Blender versionné (`assets/blender/tsena_assets.py`), textes des cases en `CanvasTexture` (police chargée avant de dessiner).
 - **Entrée** : zones cliquables généreuses (transparentes, pas `visible={false}`), avec un aperçu du coup avant validation (fantôme, surbrillance). N'envoyer `act` que si c'est le tour du joueur.
 - **HUD** (HTML par-dessus le canvas) : joueurs avec leur couleur, à qui le tour, « À toi de jouer ! ». L'écran de résultat et « Rejouer » sont gérés par `RoomScreen`, pas à refaire.
-- **Game feel** : voir `references/game-feel.md`. Au minimum : une animation de l'action jouée et une mise en valeur de la fin.
-- **Thème** : `apps/client/src/games/<id>/theme.ts` exporte un `Theme` (toutes les variables `ThemeVar`, appliquées du salon jusqu'au résultat) et la palette de la scène 3D (ciel, sol, lumières, couleurs des joueurs). La vue n'a aucune couleur codée en dur. Modèle : `connect4/theme.ts`. Chaque jeu a sa propre ambiance, qui doit rester lisible : contraste du texte sur `--card` et `--bg`, et des couleurs de joueurs bien distinctes.
+- **Game feel** : voir `references/game-feel.md`. Au minimum : une animation de l'action jouée et une mise en valeur de la fin. Pas d'animation CSS qui part de `opacity: 0` sur un texte utile : sur un appareil lent, elle reste bloquée au début.
+- **Thème** : `apps/client/src/games/<id>/theme.ts` exporte un `Theme` (toutes les variables `ThemeVar`, appliquées du salon jusqu'au résultat) et la palette du jeu (couleurs des joueurs, du décor). La vue n'a aucune couleur codée en dur. Décorations propres au thème dans `styles.css` sous `[data-theme='<id>']`. Modèle : `snakes/theme.ts`. Chaque jeu a sa propre ambiance, qui doit rester lisible : contraste du texte sur `--card` et `--bg`, et des couleurs de joueurs bien distinctes.
 - Enregistrer la vue et le thème dans `apps/client/src/games/index.ts`, avec un emoji.
 
 ## 4. Vérifier

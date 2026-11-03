@@ -13,8 +13,12 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  background: var(--bg);
   overscroll-behavior: none;
+}
+
+html,
+body {
+  background-color: var(--bg);
 }
 
 body {
@@ -162,6 +166,11 @@ input::placeholder {
   box-shadow: 0 4px 0 var(--line);
 }
 
+.game-name {
+  line-height: 1.5;
+  text-align: center;
+}
+
 .game-emoji {
   font-size: 2rem;
 }
@@ -180,7 +189,8 @@ input::placeholder {
 
 .small {
   font-size: 0.85em;
-  word-break: break-all;
+  /* Long share links may break anywhere; ordinary words stay whole. */
+  overflow-wrap: anywhere;
 }
 
 /* Row of mutually exclusive choices (mode, bot level). */
@@ -240,6 +250,11 @@ input::placeholder {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+}
+
+.backdrop-flat {
+  background: radial-gradient(circle at 50% 24%, rgba(249, 200, 14, 0.55) 0 14%, rgba(255, 42, 109, 0.35) 15% 26%, transparent 42%),
+    linear-gradient(to bottom, var(--bg) 0 48%, #2a0b4a 48.2%, var(--bg) 100%);
 }
 
 .marquee {
@@ -507,6 +522,876 @@ input::placeholder {
 
 @media (prefers-reduced-motion: reduce) {
   .press-start {
+    animation: none;
+  }
+}
+
+/* ---------- 4 en ligne (toy cartoon) ---------- */
+
+.c4-stage {
+  /* Fixed-size clouds, so they keep their shape on any screen. */
+  background: radial-gradient(ellipse 70px 26px at 18% 15%, #fff 98%, transparent),
+    radial-gradient(ellipse 48px 30px at calc(18% + 34px) calc(15% - 14px), #fff 98%, transparent),
+    radial-gradient(ellipse 60px 22px at 82% 22%, #fff 98%, transparent),
+    radial-gradient(ellipse 36px 24px at calc(82% - 22px) calc(22% - 12px), #fff 98%, transparent),
+    radial-gradient(ellipse 120% 40% at 50% 100%, #9fd49a 60%, #7fbf7a 61% 63%, transparent 64%),
+    linear-gradient(to bottom, var(--bg), #e4f4fb 70%);
+}
+
+.c4-board {
+  position: absolute;
+  inset: max(70px, env(safe-area-inset-top)) 12px max(80px, env(safe-area-inset-bottom));
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.c4-svg {
+  width: min(100cqw, 100cqh * 748 / 802);
+  aspect-ratio: 748 / 802;
+  overflow: visible;
+  filter: drop-shadow(0 10px 0 rgba(29, 43, 79, 0.15));
+}
+
+.c4-col.playable {
+  cursor: pointer;
+}
+
+/* Falls from above the board, bounces once. */
+.c4-drop {
+  animation: c4-drop var(--ms) cubic-bezier(0.5, 0, 1, 1) both;
+}
+
+@keyframes c4-drop {
+  0% {
+    transform: translateY(var(--from));
+  }
+  70% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  85% {
+    transform: translateY(-18px);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.c4-win {
+  animation: c4-pulse 0.9s ease-in-out 0.5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.c4-drop.c4-win {
+  animation: c4-drop var(--ms) cubic-bezier(0.5, 0, 1, 1) both, c4-pulse 0.9s ease-in-out 0.6s infinite;
+}
+
+@keyframes c4-pulse {
+  50% {
+    filter: brightness(1.25);
+  }
+}
+
+.c4-winline {
+  animation: fade-in 0.3s ease-out 0.5s both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.c4-ghost {
+  opacity: 0.85;
+  pointer-events: none;
+  animation: c4-bob 1s ease-in-out infinite;
+}
+
+@keyframes c4-bob {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c4-drop,
+  .c4-win,
+  .c4-ghost {
+    animation: none;
+  }
+}
+
+/* ---------- Serpents & échelles (paper) ---------- */
+
+/* Seyès ruling: faint lines every 8px, bold every 32px, red margin. */
+[data-theme='snakes'] body {
+  background-image: linear-gradient(90deg, transparent 0 52px, rgba(208, 64, 58, 0.55) 52px 54px, transparent 54px),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(90, 130, 200, 0.22) 31px 32px),
+    repeating-linear-gradient(to bottom, transparent 0 31px, rgba(90, 130, 200, 0.4) 31px 32px),
+    repeating-linear-gradient(to bottom, transparent 0 7px, rgba(90, 130, 200, 0.16) 7px 8px);
+}
+
+/* Hand-drawn, slightly uneven outlines. */
+[data-theme='snakes'] :is(.card, button, .players li, .result, input, .hud-player, .snakes-players li) {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+}
+
+[data-theme='snakes'] button:not(.snakes-die) {
+  border: 2px solid var(--ink);
+}
+
+[data-theme='snakes'] .room-code,
+[data-theme='snakes'] .result h2 {
+  color: var(--btn-bg);
+  transform: rotate(-2deg);
+}
+
+.snakes {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'players' 'board' 'controls';
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+}
+
+.snakes-board {
+  grid-area: board;
+}
+
+/* Portrait: the side panel dissolves so its parts take their own grid rows. */
+.snakes-side {
+  display: contents;
+}
+
+.snakes-players {
+  grid-area: players;
+}
+
+.snakes-controls {
+  grid-area: controls;
+}
+
+.snakes-board {
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Biggest square-ish sheet (board + start tray) that fits the space. */
+.snakes-sheet {
+  position: relative;
+  width: min(100cqw, 100cqh * 1000 / 1090);
+  aspect-ratio: 1000 / 1090;
+}
+
+.snakes-art,
+.snakes-pawns {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.snakes-art text {
+  font-family: 'Patrick Hand', cursive;
+}
+
+.snakes-art .mystery text,
+.snakes-art .tray-label {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+}
+
+.pawn {
+  transition-property: transform;
+  transition-timing-function: ease-in-out;
+}
+
+/* Little jump on every hop. */
+.pawn .hop {
+  animation: pawn-hop 0.22s ease-out;
+}
+
+@keyframes pawn-hop {
+  40% {
+    transform: translateY(-16px) scale(1.08);
+  }
+}
+
+.snakes-card {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(78%, 320px);
+  padding: 18px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+  background: #fff0a0;
+  color: var(--ink);
+  box-shadow: 4px 6px 0 rgba(52, 53, 63, 0.2);
+  transform: translate(-50%, -50%) rotate(-3deg);
+  animation: post-it 0.3s ease-out;
+}
+
+.snakes-card strong {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  color: var(--btn-bg);
+}
+
+.snakes-card span {
+  font-size: 1.25rem;
+}
+
+@keyframes post-it {
+  from {
+    transform: translate(-50%, -30%) rotate(6deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+
+.snakes-players {
+  list-style: none;
+  /* Clear of the leave button. */
+  margin: 0 0 0 54px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.snakes-players li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--card);
+  border: 2px solid var(--line);
+}
+
+.snakes-players li.active {
+  border-color: var(--ink);
+  box-shadow: 2px 3px 0 rgba(52, 53, 63, 0.2);
+}
+
+.snakes-players .chip {
+  grid-row: span 2;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ink);
+}
+
+.snakes-name {
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snakes-stats {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.snakes-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+}
+
+.snakes-die {
+  flex: none;
+  width: 68px;
+  height: 68px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.snakes-die:disabled {
+  opacity: 1;
+}
+
+.snakes-die:not(:disabled) {
+  animation: nudge 1.4s ease-in-out infinite;
+}
+
+.snakes-die.rolling svg {
+  animation: shake 0.14s linear infinite;
+}
+
+@keyframes shake {
+  25% {
+    transform: rotate(-14deg) translateY(-3px);
+  }
+  75% {
+    transform: rotate(12deg) translateY(2px);
+  }
+}
+
+@keyframes nudge {
+  50% {
+    transform: rotate(-6deg) scale(1.05);
+  }
+}
+
+.snakes-roll {
+  flex: 1;
+}
+
+.snakes-wait {
+  flex: 1;
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.snakes-choice {
+  flex: 1;
+}
+
+.snakes-choice p {
+  margin: 0 0 6px;
+}
+
+.snakes-choice .row button {
+  flex: 1;
+  padding: 10px 8px;
+}
+
+/* Wide screens: board on the left, players and dice on the right. */
+@media (min-aspect-ratio: 5/4) {
+  .snakes {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 300px;
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+
+  .snakes {
+    grid-template-areas: 'board side';
+  }
+
+  .snakes-side {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .snakes-players {
+    grid-template-columns: 1fr;
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn .hop,
+  .snakes-die:not(:disabled),
+  .snakes-die.rolling svg {
+    animation: none;
+  }
+}
+
+/* ---------- Tsena (Madagascar, 3D) ---------- */
+
+/* Lobby: sky over the lagoon, and a lamba-striped hem. */
+[data-theme='tsena'] body {
+  background-image: linear-gradient(180deg, #a9dcef 0%, #e8f5ef 45%, #e8f5ef 92%, transparent 92%),
+    repeating-linear-gradient(90deg, #c4643b 0 18px, #f2c14e 18px 26px, #1f8a4c 26px 40px, #fffaf0 40px 46px);
+}
+
+[data-theme='tsena'] .tsena-card {
+  box-shadow: var(--card-shadow), 0 14px 30px rgba(58, 33, 22, 0.3);
+}
+
+/* The two decks: sapphire blue for fate, woven orange for kinship. */
+[data-theme='tsena'] .tsena-card.vintana {
+  border-top-color: #3d7dd8;
+}
+
+[data-theme='tsena'] .tsena-card.fihavanana {
+  border-top-color: #e0873a;
+}
+
+[data-theme='tsena'] .tsena-players li.active {
+  box-shadow: 0 0 0 3px var(--seat), var(--card-shadow);
+}
+
+/* The result banner moves up: the panel below shows the final fortunes. */
+[data-theme='tsena'] .result {
+  bottom: auto;
+  top: max(120px, 18vh);
+}
+
+.tsena-top {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 64px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.tsena-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tsena-players li {
+  flex: 1 1 100px;
+  min-width: 0;
+  max-width: 230px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: center;
+  background: var(--card);
+  border: var(--card-border);
+  border-left: 6px solid var(--seat);
+  border-radius: calc(var(--radius) * 0.7);
+  box-shadow: var(--card-shadow);
+  padding: 3px 8px;
+  font-size: 14px;
+  line-height: 1.15;
+  opacity: 0.88;
+  transition: opacity 0.2s;
+}
+
+.tsena-players li.active {
+  opacity: 1;
+}
+
+.tsena-players li.out {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.tsena-avatar {
+  grid-row: span 2;
+  font-size: 22px;
+}
+
+.tsena-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tsena-money {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tsena-tools {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.tsena-round {
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tsena-map {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  border: var(--card-border);
+  font-size: 20px;
+}
+
+.tsena-panel {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  margin: 0 auto;
+  max-width: 520px;
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  /* A site's card can be long: it scrolls rather than covering the board. */
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tsena-panel:empty {
+  display: none;
+}
+
+.tsena-panel p {
+  margin: 0;
+}
+
+.tsena-caption {
+  font-weight: 700;
+  /* Movement only: on a slow device the text must never sit invisible. */
+  animation: tsena-nudge 0.45s ease-out;
+}
+
+@keyframes tsena-nudge {
+  from {
+    transform: translateY(4px);
+  }
+}
+
+.tsena-caption.muted {
+  font-size: 14px;
+}
+
+.tsena-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(var(--display-size) * 19px);
+  line-height: 1.2;
+}
+
+.tsena-region {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.tsena-region::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--region, var(--muted));
+}
+
+.tsena-monument {
+  font-weight: 700;
+}
+
+.tsena-hint {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* An inline button inside a sentence, with a finger-sized hit area. */
+.tsena-link {
+  display: inline;
+  margin: -10px -2px;
+  padding: 10px 4px;
+  background: none;
+  box-shadow: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.tsena-actions.wrap {
+  flex-wrap: wrap;
+}
+
+.tsena-actions.wrap button {
+  flex: 1 1 45%;
+  white-space: normal;
+}
+
+.tsena-offers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tsena-offers button {
+  padding: 12px 2px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.tsena-rents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.tsena-rents li {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 4px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.tsena-rents li b {
+  font-size: 14px;
+}
+
+.tsena-rents li.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.tsena-assets,
+.tsena-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.tsena-assets button {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border-left: 6px solid var(--region);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: none;
+  font-size: 14px;
+  text-align: left;
+}
+
+.tsena-assets span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tsena-rules li {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.tsena-wait {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tsena-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tsena-actions button {
+  flex: 1;
+  padding: 12px 8px;
+  font-size: calc(var(--display-size) * 15px);
+  white-space: nowrap;
+}
+
+.tsena-roll {
+  width: 100%;
+}
+
+.tsena-hops {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tsena-hops button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-height: 54px;
+  padding: 6px 4px;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--line);
+  line-height: 1.1;
+}
+
+.tsena-hops b {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tsena-hops span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tsena-stay {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  border: 2px solid var(--line);
+}
+
+.tsena-info {
+  position: relative;
+  padding: 0 40px;
+}
+
+.tsena-close {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.tsena-card {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  width: min(300px, 78vw);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px 20px;
+  background: var(--card);
+  border: var(--card-border);
+  border-top: 8px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  animation: tsena-card-in 0.75s cubic-bezier(0.2, 1.3, 0.4, 1);
+  pointer-events: none;
+}
+
+.tsena-card strong {
+  font-family: var(--font-display);
+  font-size: calc(var(--display-size) * 22px);
+  line-height: 1.1;
+}
+
+.tsena-card-kicker {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@keyframes tsena-card-in {
+  from {
+    transform: translate(-50%, -40%) rotate(-6deg) scale(0.85);
+  }
+}
+
+.tsena-ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tsena-ranking li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-left: 6px solid var(--seat);
+  border-radius: 6px;
+  background: var(--bg);
+  font-weight: 700;
+}
+
+/* No WebGL: the road as a list. */
+.tsena-flat {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 140px 16px 260px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tsena-flat li {
+  display: flex;
+  justify-content: space-between;
+  min-height: 44px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--card);
+  border-left: 6px solid var(--seat);
+  box-shadow: inset 6px 0 0 var(--region);
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsena-card,
+  .tsena-caption {
     animation: none;
   }
 }
