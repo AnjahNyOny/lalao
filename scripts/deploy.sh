@@ -12,19 +12,27 @@ cd "$(dirname "$0")/.."
 HOST=${DEPLOY_HOST:-liantsoa@anjahnyony.com}
 DIR=${DEPLOY_DIR:-/var/www/lalao}
 URL=${DEPLOY_URL:-https://lalao.anjahnyony.com}
+# As in deploy/ecosystem.config.cjs.
+PORT=5004
 KEEP=3
 
 restart() {
   ssh "$HOST" "cd $DIR && pm2 startOrReload ecosystem.config.cjs --update-env >/dev/null && pm2 save >/dev/null"
 }
 
+# The game server itself, from the VPS (must answer), then the public site
+# through nginx and HTTPS (a warning only: DNS or the certificate may lag).
 check() {
+  local ok=
   for _ in 1 2 3 4 5 6; do
-    if curl -fsS "$URL/healthz"; then echo; return 0; fi
+    if ssh "$HOST" "curl -fsS http://127.0.0.1:$PORT/healthz"; then ok=1; echo; break; fi
     sleep 2
   done
-  echo "Le serveur ne répond pas sur $URL/healthz : regarde « ssh $HOST pm2 logs lalao »." >&2
-  return 1
+  if [ -z "$ok" ]; then
+    echo "Le serveur de jeu ne répond pas : regarde « ssh $HOST pm2 logs lalao »." >&2
+    return 1
+  fi
+  curl -fsS -o /dev/null "$URL/healthz" || echo "Attention : $URL ne répond pas encore (DNS ou HTTPS)." >&2
 }
 
 if [ "${1:-}" = "--rollback" ]; then
@@ -61,4 +69,4 @@ rsync -az deploy/ecosystem.config.cjs "$HOST:$DIR/"
 ssh "$HOST" "set -e; cd $DIR; ln -sfn releases/$VERSION current.tmp && mv -Tf current.tmp current; ls -1dt releases/* | tail -n +$((KEEP + 1)) | xargs -r rm -rf"
 restart
 check
-echo "En ligne : $URL"
+echo "Déployé : $VERSION"
