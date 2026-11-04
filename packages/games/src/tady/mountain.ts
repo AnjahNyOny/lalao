@@ -2,8 +2,10 @@ import type { Mountain } from './level';
 
 /**
  * The Pic Boby, in the Andringitra, climbed by night: the forest at its foot,
- * the granite slabs, the windy col, the icy top at sunrise. Every wall has a
- * wooden ledge halfway: a partner's head up to it, the rope for the other.
+ * the granite slabs, the windy col, the icy top at sunrise. Down low, every
+ * wall has a wooden ledge halfway: a partner's head up to it, the rope for
+ * the other. Higher up the ledges thin out, the grips tire sooner, and the
+ * last wall is two blocks hanging over the void.
  */
 // prettier-ignore
 const rows = [
@@ -24,19 +26,19 @@ const rows = [
   '######.................#',
   '#......~~~~............#',
   '#......................#',
-  '#...........~~~~~......#',
-  '#....................*.#',
-  '#..................#####',
-  '#..................#####',
-  '#..................#####',
-  '#................--#####',
-  '#..................#####',
-  '#..................#####',
+  '#...........~~~~~~~~...#',
+  '#.....................*#',
+  '#....................###',
+  '#....................###',
+  '#......................#',
+  '#..................##..#',
+  '#..................##..#',
+  '#......................#',
   '#..............####....#',
   '#....*.................#',
   '#...###..~~~~~~........#',
   '#...###................#',
-  '#...###--..............#',
+  '#...###................#',
   '#...###................#',
   '#...###--..............#',
   '#...###................#',
@@ -48,7 +50,7 @@ const rows = [
   '#__________________#####',
   '#..................#####',
   '#..................#####',
-  '#................--#####',
+  '#..................#####',
   '#..................#####',
   '#..................#####',
   '#...............########',
@@ -85,8 +87,8 @@ const rows = [
   '#.........*........#####',
   '#.......######.....#####',
   '#.......######...--#####',
-  '#.......######.....#####',
-  '#.......######.....#####',
+  '#...*...######.....#####',
+  '#...-...######.....#####',
   '#.......######...#######',
   '#.......######...#######',
   '#.......######.C.#######',
@@ -118,10 +120,10 @@ export const MOUNTAIN: Mountain = {
   // Across the col, gusts blow east every few seconds.
   winds: [{ y0: 39, y1: 61, dir: 1, period: 5200, on: 1700, phase: 2500 }],
   stages: [
-    { name: 'La forêt de Morarano', floor: 103 },
-    { name: 'Les dalles de granite', floor: 83 },
-    { name: 'Le col du vent', floor: 62 },
-    { name: 'Le Pic Boby', floor: 38 },
+    { name: 'La forêt de Morarano', floor: 103, grip: 9 },
+    { name: 'Les dalles de granite', floor: 83, grip: 7 },
+    { name: 'Le col du vent', floor: 62, grip: 6.5 },
+    { name: 'Le Pic Boby', floor: 38, grip: 5 },
   ],
   altitude: [2050, 2658],
 };

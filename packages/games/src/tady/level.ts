@@ -28,6 +28,8 @@ export interface Stage {
   name: string;
   /** The row of its camp floor (the bottom of the stage). */
   floor: number;
+  /** Seconds a rested grip lasts here: shorter higher up, where it's colder. */
+  grip: number;
 }
 
 export interface Mountain {
@@ -45,6 +47,15 @@ export function altitudeAt(m: Mountain, y: number): number {
   const bottom = m.rows.length - 1;
   const [low, high] = m.altitude;
   return Math.round(low + ((bottom - y) / (bottom - top)) * (high - low));
+}
+
+/** Which stage row y belongs to, from the bottom up. */
+export function stageAt(m: Mountain, y: number): number {
+  let k = 0;
+  m.stages.forEach((st, i) => {
+    if (y <= st.floor) k = i;
+  });
+  return k;
 }
 
 export const charAt = (m: Mountain, cx: number, cy: number): string => m.rows[cy]?.[cx] ?? '#';

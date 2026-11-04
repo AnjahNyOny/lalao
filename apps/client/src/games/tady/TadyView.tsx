@@ -1,8 +1,24 @@
-import { altitudeAt, bodyOf, MOUNTAIN, orchidTotal, PHYS, size, step, touchingGrip, type Body, type Fx, type TadyAction, type TadyState } from '@game/games/tady';
+import {
+  altitudeAt,
+  bodyOf,
+  holding,
+  MOUNTAIN,
+  orchidTotal,
+  PHYS,
+  ropeFor,
+  size,
+  stageAt,
+  step,
+  touchingGrip,
+  type Body,
+  type Fx,
+  type TadyAction,
+  type TadyState,
+} from '@game/games/tady';
 import { useEffect, useRef, useState } from 'react';
 import { Stick } from '../../ui/Stick';
 import type { GameViewProps } from '../types';
-import { paintMountain, stageOf, T } from './art';
+import { paintMountain, T } from './art';
 import { usePad } from './controls';
 import { draw, type Particle, type Shown } from './draw';
 import { hintFor } from './hints';
@@ -19,12 +35,24 @@ let mountain: HTMLCanvasElement | null = null;
 /** Painted once, the first time the game is shown. */
 const mountainArt = () => (mountain ??= paintMountain(MOUNTAIN));
 
-const shownOf = (c: TadyState['climbers'][number]): Shown => ({ x: c.x, y: c.y, vx: c.vx, vy: c.vy, ground: c.ground, grab: c.grab, face: c.face });
+const shownOf = (c: TadyState['climbers'][number]): Shown => ({
+  x: c.x,
+  y: c.y,
+  vx: c.vx,
+  vy: c.vy,
+  ground: c.ground,
+  grab: c.grab,
+  face: c.face,
+  stamina: c.stamina,
+  tired: c.tired,
+  hanging: false,
+  dragged: false,
+});
 
 /** A little burst of pixels for each event: dust, crumbs, an orchid's petals, confetti at the top. */
 function burst(particles: Particle[], f: Fx): void {
   const colors: Record<Fx['t'], string[]> = {
-    fall: ['#d8c8a8', '#a89878'],
+    fall: PAL.dust,
     crumble: PAL.crumble,
     restore: ['#e8d8b8'],
     pick: [PAL.orchid[0], PAL.orchid[1], PAL.orchid[2]],
@@ -97,6 +125,7 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
     let sent: [number, number] = seat >= 0 ? [first.climbers[seat].x, first.climbers[seat].y] : [0, 0];
     const cam = { x: (first.climbers[0].x + first.climbers[1].x) / 2, y: (first.climbers[0].y + first.climbers[1].y) / 2 };
     const particles: Particle[] = [];
+    const landed = [-1e9, -1e9];
     let seen = first.fx.at(-1)?.n ?? 0;
     let last = performance.now();
     let raf = 0;
@@ -107,6 +136,7 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
       last = now;
       const s = state.current;
       const view = shown.current;
+      const grounded = view.map((v) => v.ground);
 
       if (body && seat >= 0) {
         const c = s.climbers[seat];
@@ -144,7 +174,7 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
             actRef.current(action);
           }
         }
-        view[seat] = { x: body.x, y: body.y, vx: body.vx, vy: body.vy, ground: body.ground, grab: body.grab, face: body.face };
+        view[seat] = { x: body.x, y: body.y, vx: body.vx, vy: body.vy, ground: body.ground, grab: body.grab, face: body.face, stamina: body.stamina, tired: body.tired, hanging: body.hanging, dragged: body.dragged };
       }
 
       // The partner, where the server last saw them, a little ahead if moving, smoothed.
@@ -155,7 +185,24 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
         const tx = c.x + c.vx * age;
         const ty = c.y + c.vy * age;
         const k = Math.hypot(tx - v.x, ty - v.y) > 3 ? 1 : 1 - Math.exp(-raw * 18);
-        view[i] = { x: v.x + (tx - v.x) * k, y: v.y + (ty - v.y) * k, vx: c.vx, vy: c.vy, ground: c.ground, grab: c.grab, face: c.face };
+        const other = view[1 - i];
+        const x = v.x + (tx - v.x) * k;
+        const y = v.y + (ty - v.y) * k;
+        const hanging = holding(other, { x, y, ground: c.ground, grab: c.grab }, ropeFor(s.rope, y, other.y));
+        const dragged = c.ground && !c.grab && holding({ x, y }, other, ropeFor(s.rope, other.y, y));
+        view[i] = { x, y, vx: c.vx, vy: c.vy, ground: c.ground, grab: c.grab, face: c.face, stamina: c.stamina, tired: c.tired, hanging, dragged };
+      });
+
+      // Little signs of life: squashed on landing, dust underfoot, sweat when holding on hurts.
+      view.forEach((v, i) => {
+        if (v.ground && !grounded[i]) landed[i] = now;
+        if (v.ground && Math.abs(v.vx) > 3 && Math.random() < raw * 9) {
+          particles.push({ x: v.x * T - v.vx * 1.5, y: (v.y + PHYS.hh) * T - 1, vx: -v.vx * 3, vy: -12 - Math.random() * 14, life: 0.25 + Math.random() * 0.2, color: PAL.dust[i % 2] });
+        }
+        if ((v.grab || v.tired) && v.stamina < 0.55 && Math.random() < raw * 5) {
+          const side = Math.random() < 0.5 ? -1 : 1;
+          particles.push({ x: v.x * T + side * 5, y: (v.y - 0.25) * T, vx: side * (14 + Math.random() * 16), vy: -30 - Math.random() * 20, life: 0.45, color: PAL.strength[4] });
+        }
       });
 
       for (const f of s.fx) {
@@ -184,7 +231,7 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
       // A little rock below the valley floor, more in portrait where the thumbs cover the bottom.
       const y = Math.min(MH - vh / 2 + (lift ? vh * 0.25 : 0.4), cam.y);
 
-      draw(g, art.width, art.height, mountainArt(), { s, shown: view, pieces: piecesRef.current, t: now, cam: { x, y }, particles });
+      draw(g, art.width, art.height, mountainArt(), { s, shown: view, pieces: piecesRef.current, t: now, cam: { x, y }, particles, landed });
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(art, 0, 0, art.width * scale, art.height * scale);
     };
@@ -198,7 +245,7 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
   const mine = seat >= 0 ? seat : 0;
   const now = shown.current;
   const higher = Math.min(now[0].y, now[1].y);
-  const stage = stageOf(MOUNTAIN, higher);
+  const stage = stageAt(MOUNTAIN, higher);
   if (stageShown.current.stage !== stage) stageShown.current = { stage, at: Date.now() };
   const banner = s.won
     ? { top: 'Au sommet du Pic Boby !', main: `${clock(s.time)} · ${s.falls} chute${s.falls > 1 ? 's' : ''} · ✿ ${s.picked.length}/${orchidTotal()}` }
@@ -240,7 +287,8 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
           <Stick className="tady-stick" onMove={setStick} />
           <div className="tady-buttons">
             <button
-              className={`tady-grip${now[seat].grab ? ' holding' : touchingGrip(now[seat]) ? ' ready' : ''}`}
+              className={`tady-grip${now[seat].tired ? ' tired' : now[seat].grab ? ' holding' : touchingGrip(now[seat]) ? ' ready' : ''}`}
+              style={{ ['--force' as string]: now[seat].stamina.toFixed(2) }}
               onPointerDown={(e) => {
                 e.preventDefault();
                 (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -263,7 +311,7 @@ export function TadyView({ view, me, room, act }: GameViewProps) {
           </div>
         </>
       ) : (
-        <p className="tady-keys">Flèches ou ZQSD · Espace : sauter · Maj : s’agripper (maintenir) · Haut : tirer la corde</p>
+        <p className="tady-keys">Flèches ou ZQSD · Espace : sauter · Maj : s’agripper (maintenir) · Haut, bas : la corde · Gauche, droite pendu : se balancer</p>
       )}
     </div>
   );

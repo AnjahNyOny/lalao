@@ -1,4 +1,4 @@
-import { charAt, size, type Mountain } from '@game/games/tady';
+import { charAt, size, stageAt, type Mountain } from '@game/games/tady';
 import { PAL, SCARVES, STAGE_ART } from './theme';
 
 /** Pixels per tile: the whole game is drawn at this resolution, then scaled up by whole numbers. */
@@ -158,7 +158,18 @@ const FRAMES = {
   ],
 };
 
-export type Frame = keyof typeof FRAMES;
+const IDLE = FRAMES.idle0;
+const ALL = {
+  ...FRAMES,
+  // The tail swayed the other way, eyes open: idle0 and idle2 take turns.
+  idle2: FRAMES.idle1.map((row) => row.replace('ggwmmk', 'ggwmek')),
+  // Squashed for a moment on landing: a pixel lower, the feet spread.
+  land: ['................', '................', ...IDLE.slice(1, 12), '...fklllllkf....', '...ff.....ff....', '................'],
+  // On the end of the rope: a paw up to it, the feet dangling together.
+  hang: [...FRAMES.fall.slice(0, 13), '.....fkkkf......', '......f.f.......', '................'],
+};
+
+export type Frame = keyof typeof ALL;
 export const SPRITE_W = 16;
 export const SPRITE_H = 16;
 /** The pixel row under the feet: it stands on the ground. */
@@ -177,11 +188,22 @@ const BODY: Record<string, string> = {
   f: '#5a5662',
 };
 
+/** How red the effort turns the fur and the face, strain 0 to 3; at 3 the eyes squeeze shut. */
+const FLUSH = [0, 0.3, 0.5, 0.68];
+const FLUSHED = new Set(['g', 'G', 'l', 'w']);
+
+function toward(a: string, b: string, k: number): string {
+  const [ar, ag, ab] = rgb(a);
+  const [br, bg, bb] = rgb(b);
+  const c = (x: number, y: number) => Math.round(x + (y - x) * k).toString(16).padStart(2, '0');
+  return `#${c(ar, br)}${c(ag, bg)}${c(ab, bb)}`;
+}
+
 const sprites = new Map<string, HTMLCanvasElement>();
 
-/** One frame of a climber, in their scarf's colour, facing right or left. */
-export function climber(frame: Frame, piece: string, flip: boolean): HTMLCanvasElement {
-  const key = `${frame}:${piece}:${flip}`;
+/** One frame of a climber, in their scarf's colour, facing right or left, red with the strain of holding on. */
+export function climber(frame: Frame, piece: string, flip: boolean, strain = 0): HTMLCanvasElement {
+  const key = `${frame}:${piece}:${flip}:${strain}`;
   let c = sprites.get(key);
   if (c) return c;
   c = document.createElement('canvas');
@@ -189,10 +211,12 @@ export function climber(frame: Frame, piece: string, flip: boolean): HTMLCanvasE
   c.height = SPRITE_H;
   const g = c.getContext('2d')!;
   const scarf = SCARVES[piece] ?? SCARVES.koto;
-  FRAMES[frame].forEach((row, y) =>
+  ALL[frame].forEach((row, y) =>
     [...row].forEach((ch, x) => {
-      const color = ch === 'r' ? scarf.main : ch === 'R' ? scarf.shade : BODY[ch];
+      const k = strain >= 3 && ch === 'e' ? 'k' : ch;
+      let color = k === 'r' ? scarf.main : k === 'R' ? scarf.shade : BODY[k];
       if (!color) return;
+      if (strain > 0 && FLUSHED.has(k)) color = toward(color, PAL.flush, FLUSH[strain] * (k === 'w' ? 0.6 : 1));
       g.fillStyle = color;
       g.fillRect(flip ? SPRITE_W - 1 - x : x, y, 1, 1);
     }),
@@ -228,15 +252,6 @@ export function noise(a: number, b: number, c = 0): number {
 
 const rgb = (hex: string): [number, number, number] => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
-/** Which stage a row belongs to, from the bottom up. */
-export function stageOf(m: Mountain, y: number): number {
-  let k = 0;
-  m.stages.forEach((st, i) => {
-    if (y <= st.floor) k = i;
-  });
-  return k;
-}
-
 /**
  * Everything that never moves, painted once: rock, ice, wooden ledges, camp
  * floors, tents, the grass. Crumbling ledges, orchids, fires and the flag
@@ -264,7 +279,7 @@ export function paintMountain(m: Mountain): HTMLCanvasElement {
   for (let cy = 0; cy < h; cy++) {
     for (let cx = 0; cx < w; cx++) {
       const c = charAt(m, cx, cy);
-      const art = STAGE_ART[stageOf(m, cy)];
+      const art = STAGE_ART[stageAt(m, cy)];
       const x0 = cx * T;
       const y0 = cy * T;
       if (c === '#') {

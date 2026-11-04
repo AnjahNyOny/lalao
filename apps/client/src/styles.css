@@ -2026,11 +2026,18 @@ input::placeholder {
   border: 3px solid var(--accent);
 }
 
+/* Held, it fills with what's left of the grip, draining from the top. */
 .tady-grip.holding {
-  background: var(--accent);
+  background: linear-gradient(to top, var(--accent) calc(var(--force, 1) * 100%), var(--btn-bg) 0);
   color: var(--accent-ink);
   box-shadow: 0 2px 0 var(--accent-shadow);
   transform: translateY(3px);
+}
+
+/* Spent: no grip until the paws have rested. */
+.tady-grip.tired {
+  opacity: 0.5;
+  border: 3px dashed var(--muted);
 }
 
 .tady-jump {

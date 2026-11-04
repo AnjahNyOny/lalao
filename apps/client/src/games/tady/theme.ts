@@ -43,6 +43,12 @@ export const PAL = {
   cairn: ['#8a8a90', '#b0b0b8', '#5a5a62'],
   outline: '#140f1c',
   glow: '#ffcf8a',
+  /** Holding on too long: the fur flushes towards this. */
+  flush: '#e0402e',
+  /** Grip strength above a climber's head: plenty, half, nearly spent; the frame round it; a drop of sweat. */
+  strength: ['#6ad84a', '#f2c83a', '#ec4a32', '#140f1c', '#bfe6ff'],
+  alarm: '#fff4d8',
+  dust: ['#d8c8a8', '#a89878'],
 };
 
 export const tadyTheme: Theme = {

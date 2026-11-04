@@ -11,6 +11,13 @@ export interface Shown {
   ground: boolean;
   grab: boolean;
   face: 1 | -1;
+  /** Grip strength, 1 rested, 0 spent (see GRIP); spent and not rested yet. */
+  stamina: number;
+  tired: boolean;
+  /** On the end of the rope below the partner. */
+  hanging: boolean;
+  /** On the ground, no grip, pulled along by a partner hanging below. */
+  dragged: boolean;
 }
 
 export interface Particle {
@@ -31,6 +38,8 @@ export interface Frame2D {
   /** Camera centre, in tiles. */
   cam: { x: number; y: number };
   particles: Particle[];
+  /** When each climber last landed (ms, same clock as t): squashed for a moment. */
+  landed: number[];
 }
 
 const m = MOUNTAIN;
@@ -121,12 +130,42 @@ function ridge(g: CanvasRenderingContext2D, W: number, H: number, f: Frame2D, pa
   }
 }
 
-function frameOf(c: Shown, t: number, seat: number): Frame {
+const LAND_MS = 110;
+
+function frameOf(c: Shown, t: number, seat: number, landed: number): Frame {
   if (c.grab) return 'grip';
-  if (!c.ground) return c.vy < 0 ? 'jump' : 'fall';
+  if (c.hanging) return 'hang';
+  if (!c.ground || c.dragged) return c.vy < 0 ? 'jump' : 'fall';
+  if (t - landed < LAND_MS) return 'land';
   if (Math.abs(c.vx) > 0.6) return (['run0', 'run1', 'run2', 'run1'] as const)[Math.floor(t / 90) % 4];
-  // A blink now and then.
-  return Math.floor(t / 100 + seat * 17) % 40 === 0 ? 'idle1' : 'idle0';
+  // A blink now and then; the tail swaying the rest of the time.
+  if (Math.floor(t / 100 + seat * 17) % 40 === 0) return 'idle1';
+  return Math.floor(t / 650 + seat * 0.5) % 2 ? 'idle2' : 'idle0';
+}
+
+/** How hard holding on is getting, 0 to 3: the fur reddens with it. */
+const strainOf = (c: Shown) => (c.tired ? 3 : c.stamina > 0.6 ? 0 : c.stamina > 0.4 ? 1 : c.stamina > 0.2 ? 2 : 3);
+
+/** Grip strength over the head while it isn't full: green, yellow, then red and blinking. */
+function strength(g: CanvasRenderingContext2D, x: number, y: number, c: Shown, t: number): void {
+  if (c.stamina > 0.995 && !c.tired) return;
+  const [good, half, low, frame] = PAL.strength;
+  const w = 10;
+  const fill = Math.round(c.stamina * (w - 2));
+  if (c.stamina < 0.25 && Math.floor(t / 120) % 2) return;
+  g.fillStyle = frame;
+  g.fillRect(x - w / 2, y, w, 3);
+  g.fillStyle = c.tired ? low : c.stamina > 0.5 ? good : c.stamina > 0.25 ? half : low;
+  g.fillRect(x - w / 2 + 1, y + 1, fill, 1);
+}
+
+/** A little « ! » over the head. */
+function alarm(g: CanvasRenderingContext2D, x: number, y: number): void {
+  g.fillStyle = PAL.outline;
+  g.fillRect(x - 1, y - 1, 3, 7);
+  g.fillStyle = PAL.alarm;
+  g.fillRect(x, y, 1, 3);
+  g.fillRect(x, y + 4, 1, 1);
 }
 
 /** The rope between the two, sagging when there's slack. */
@@ -182,8 +221,29 @@ export function draw(g: CanvasRenderingContext2D, W: number, H: number, level: H
   const [a, b] = f.shown;
   rope(g, a, b, s.rope, ox, oy);
   f.shown.forEach((c, seat) => {
-    const sprite = climber(frameOf(c, f.t, seat), f.pieces[seat], c.face < 0);
-    g.drawImage(sprite, Math.round(c.x * T - SPRITE_W / 2 - ox), Math.round((c.y + PHYS.hh) * T - SPRITE_FEET - oy));
+    const other = f.shown[1 - seat];
+    // Standing still, a climber looks at the other one.
+    const idle = c.ground && Math.abs(c.vx) < 0.3 && Math.abs(other.x - c.x) > 0.6;
+    const face = idle ? (other.x > c.x ? 1 : -1) : c.face;
+    let frame = frameOf(c, f.t, seat, f.landed[seat] ?? -1e9);
+    let dx = 0;
+    let dy = 0;
+    // Hanging on near the end of their strength: shaking.
+    const strain = strainOf(c);
+    if (c.grab && strain >= 2) dx = Math.floor(f.t / (strain >= 3 ? 30 : 45)) % 2 ? 1 : -1;
+    if (c.grab && strain >= 3) dy = Math.floor(f.t / 70) % 2;
+    // On the summit, hopping for joy.
+    if (s.won) {
+      dy = -Math.round(Math.abs(Math.sin((f.t + seat * 260) / 210)) * 5);
+      frame = dy < -1 ? 'jump' : 'idle0';
+    }
+    const sx = Math.round(c.x * T - SPRITE_W / 2 - ox);
+    const sy = Math.round((c.y + PHYS.hh) * T - SPRITE_FEET - oy);
+    g.drawImage(climber(frame, f.pieces[seat], face < 0, strain), sx + dx, sy + dy);
+    if (!s.won) strength(g, sx + SPRITE_W / 2, sy - 2, c, f.t);
+    // The partner is falling: a start of fright.
+    const falling = !other.ground && !other.grab && !other.hanging && other.vy > PHYS.jump * 0.6;
+    if ((falling || c.dragged) && !c.grab && !s.won) alarm(g, sx + SPRITE_W / 2 + (face > 0 ? 3 : -3), sy - 8 - (Math.floor(f.t / 150) % 2));
   });
 
   // Gusts across the col: streaks of wind.

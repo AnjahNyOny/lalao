@@ -1,5 +1,5 @@
 import type { GameDefinition, GameOption, PlayerId } from '@game/core';
-import { cellIndex, cellsWith, charAt, size, type Mountain } from './level';
+import { cellIndex, cellsWith, charAt, size, stageAt, type Mountain } from './level';
 import { MOUNTAIN } from './mountain';
 
 export * from './level';
@@ -9,7 +9,8 @@ export { MOUNTAIN } from './mountain';
  * Tady (« la corde »): two ring-tailed lemurs, roped together, climb the Pic
  * Boby by night to see the sun rise from the top. Each is the other's
  * belay: grip the rock while your partner jumps, stand on their head, swing
- * at the end of the rope, haul them up.
+ * at the end of the rope, haul them up. A grip doesn't last: it tires, the
+ * faster for holding the partner's weight, and the higher up the mountain.
  *
  * Like Miaraka, each device moves its own climber with `step` (the same code
  * runs here) and reports where it is; the server checks the report (speed,
@@ -32,16 +33,47 @@ export const PHYS = {
   coyote: 0.1,
   buffer: 0.12,
   rope: 5,
-  ropeMin: 1.3,
-  /** Hauling in, climbing up the rope, and the rope paying back out, in tiles per second. */
+  ropeMin: 0.85,
+  /** Hauling in, climbing up or down the rope, and the rope paying back out, in tiles per second. */
   reel: 3.2,
   climb: 2.4,
   relax: 3,
-  /** A push off the rope while hanging under a partner who grips the rock. */
-  ropeJumpCool: 0.45,
+  /** At the top of the rope, a pull up over the edge the partner holds: about 1.6 tiles. */
+  hoist: 10.4,
+  hoistCool: 0.5,
+  /** Hanging on the rope's end, a pendulum: the stick pumps it, the air barely slows it, up to this fast. */
+  pump: 16,
+  swingDrag: 0.25,
+  swingMax: 14,
+  /** Hanging against the rock, a push off it with the feet. */
+  kick: 7,
+  /**
+   * A partner hanging free below pulls with this much of their weight (a share
+   * of gravity); when the rope snaps taut on their fall, this share of their
+   * speed yanks you towards them. Only a grip holds against it.
+   */
+  weight: 0.8,
+  yank: 0.5,
   /** A gust carries everyone who isn't gripping along at this speed. */
   wind: 4.5,
 } as const;
+
+/**
+ * Grip strength, 1 rested, 0 spent: a rested grip lasts the stage's `grip`
+ * seconds, less holding the partner's weight. Spent, it lets go and needs a
+ * moment's rest before it holds again; nearly spent, it slips down the rock.
+ */
+export const GRIP = {
+  load: 1.5,
+  rest: { ground: 1.6, air: 0 },
+  /** Back to this after letting go spent, before gripping again. */
+  again: 0.3,
+  /** Below this, the grip slides down, up to `slide` tiles per second when spent. */
+  slip: 0.25,
+  slide: 1.4,
+} as const;
+/** The server is a little kinder than the devices: a device that sees its grip run out first never gets refused. */
+const GRACE = 1.15;
 
 /** How far from the paws something can still be gripped, in tiles. */
 const GRIP_REACH = 0.25;
@@ -73,6 +105,9 @@ export interface Climber {
   at: number;
   /** Highest point (smallest y) since last on the ground or on the rock: for counting falls. */
   peak: number;
+  /** Grip strength (see GRIP), as the server counts it; spent, not rested yet. */
+  stamina: number;
+  tired: boolean;
 }
 
 export interface Fx {
@@ -159,7 +194,7 @@ export interface Body {
   ground: boolean;
   grab: boolean;
   face: 1 | -1;
-  /** Seconds left to jump after leaving an edge, to keep a jump pressed a little early, before the next push off the rope. */
+  /** Seconds left to jump after leaving an edge, to keep a jump pressed a little early, before the next pull up the rope. */
   coyote: number;
   buffer: number;
   cool: number;
@@ -167,6 +202,13 @@ export interface Body {
   onPartner: boolean;
   /** Highest point (smallest y) since last held up by something. */
   peak: number;
+  stamina: number;
+  tired: boolean;
+  /** On the end of the rope below the partner: swinging. */
+  hanging: boolean;
+  /** Holding a partner who hangs below, last frame; on the ground without a grip, dragged by them. */
+  held: boolean;
+  dragged: boolean;
 }
 
 export interface Input {
@@ -191,13 +233,40 @@ export const bodyOf = (c: Climber): Body => ({
   cool: 0,
   onPartner: false,
   peak: c.y,
+  stamina: c.stamina,
+  tired: c.tired,
+  hanging: false,
+  held: false,
+  dragged: false,
 });
+
+/** Seconds a rested grip lasts at row y. */
+export const gripTime = (y: number) => M().stages[stageAt(M(), y)].grip;
+
+/**
+ * Grip strength after `dt` seconds: spent gripping, faster under the
+ * partner's weight; back once the feet are on something, not in the air.
+ * `grace` above 1 drains it slower and rests it faster (the server's count).
+ */
+export function tire(c: { stamina: number; tired: boolean; y: number }, grab: boolean, ground: boolean, load: boolean, dt: number, grace = 1): { stamina: number; tired: boolean } {
+  if (grab) {
+    const stamina = Math.max(0, c.stamina - (dt / (gripTime(c.y) * grace)) * (load ? GRIP.load : 1));
+    return { stamina, tired: c.tired || stamina <= 0 };
+  }
+  const stamina = Math.min(1, c.stamina + dt * (ground ? GRIP.rest.ground : GRIP.rest.air) * grace);
+  return { stamina, tired: c.tired && stamina < GRIP.again };
+}
+
+/** Holding the partner's weight: they hang below, on a taut rope. */
+export function holding(me: { x: number; y: number }, other: { x: number; y: number; ground: boolean; grab: boolean }, rope: number): boolean {
+  return !other.ground && !other.grab && other.y > me.y + 0.3 && Math.hypot(other.x - me.x, other.y - me.y) >= rope - 0.15;
+}
 
 /** Where the partner is, as best this device knows: a moving partner is a little ahead of their last report. */
 function partnerOf(s: TadyState, seat: number) {
   const p = s.climbers[1 - seat];
   const age = p.grab ? 0 : Math.min(0.2, (s.time - p.at) / 1000 + 0.05);
-  return { x: p.x + p.vx * age, y: p.y + p.vy * age, grab: p.grab, ground: p.ground };
+  return { x: p.x + p.vx * age, y: p.y + p.vy * age, vx: p.vx, vy: p.vy, grab: p.grab, ground: p.ground };
 }
 
 /** Does the box at (x, y) overlap a tile for which `test` holds? */
@@ -332,26 +401,73 @@ export function step(s: TadyState, seat: number, body: Body, input: Input, dt: n
   const p = partnerOf(s, seat);
   b.cool = Math.max(0, b.cool - dt);
   b.buffer = input.jump ? PHYS.buffer : Math.max(0, b.buffer - dt);
-  if (input.grab && touchingGrip(b)) {
-    b.grab = true;
+  if (input.grab && !b.tired && touchingGrip(b)) {
+    Object.assign(b, tire(b, true, false, holding(b, p, ropeFor(s.rope, p.y, b.y)), dt));
     b.vx = 0;
     b.vy = 0;
     b.ground = false;
+    b.hanging = false;
+    b.held = holding(b, p, ropeFor(s.rope, p.y, b.y));
+    b.dragged = false;
     b.peak = b.y;
+    // Nearly spent, the paws slip down the rock; spent, they let go.
+    b.grab = !b.tired;
+    if (b.grab && b.stamina < GRIP.slip) {
+      moveY(s, b, GRIP.slide * (1 - b.stamina / GRIP.slip) * dt, p);
+      b.vy = 0;
+      b.ground = false;
+      b.grab = touchingGrip(b);
+    }
     return b;
   }
+  Object.assign(b, tire(b, false, b.ground, false, dt));
   b.grab = false;
   if (Math.abs(input.mx) > 0.2) b.face = input.mx > 0 ? 1 : -1;
-  const onIce = b.ground && !b.onPartner && charAt(M(), Math.floor(b.x), Math.floor(b.y + PHYS.hh + 0.05)) === '~';
-  const accel = (b.ground ? (onIce ? PHYS.ice : PHYS.accel) : PHYS.air) * dt;
-  // Running is relative to the air: a gust carries you along, against it you barely move.
-  const target = Math.max(-1, Math.min(1, input.mx)) * PHYS.run + gustAt(s.time, b.y) * PHYS.wind;
-  b.vx = b.vx < target ? Math.min(target, b.vx + accel) : Math.max(target, b.vx - accel);
-  // Jump off the ground (a moment after leaving it still counts), or push off the rope under a gripping partner.
+  const mx = Math.max(-1, Math.min(1, input.mx));
+  const gust = gustAt(s.time, b.y);
+  const taut = !b.ground && Math.hypot(b.x - p.x, b.y - p.y) >= ropeFor(s.rope, b.y, p.y) - 0.08;
+  b.hanging = taut && b.y > p.y + 0.3;
+  // A partner hanging free below pulls with all their weight: without a grip, it drags you along the ground and over the edge, and the two of you fall.
+  const held = holding(b, p, ropeFor(s.rope, p.y, b.y));
+  // Pulled for as long as their last report has them at the end of the rope (where they'll be next only shows the snap coming).
+  const q = s.climbers[1 - seat];
+  b.dragged = b.ground && held && holding(b, q, ropeFor(s.rope, q.y, b.y));
+  if (b.dragged) {
+    // On the ground the rope runs to the edge: it pulls sideways, towards their side.
+    const side = Math.abs(p.x - b.x) > 0.3 ? Math.sign(p.x - b.x) : 0;
+    if (!body.held) {
+      // The rope snapping taut on their fall: a yank, as hard as they were falling.
+      const d = Math.hypot(p.x - b.x, p.y - b.y);
+      const away = ((p.vx - b.vx) * (p.x - b.x) + (p.vy - b.vy) * (p.y - b.y)) / d;
+      b.vx += side * Math.max(0, away) * PHYS.yank;
+    }
+    b.vx += side * PHYS.gravity * PHYS.weight * dt;
+  }
+  b.held = held;
+  // At the top of the rope, pull yourself up over the edge your partner holds (or out of the corner beside them).
+  if (taut && p.grab && b.y > p.y - 0.1 && input.my < -0.5 && s.rope <= PHYS.ropeMin + 0.05 && b.cool <= 0) {
+    b.vy = -PHYS.hoist;
+    b.cool = PHYS.hoistCool;
+  }
+  if (b.hanging) {
+    // A pendulum: gravity swings it, the stick pumps it, the gusts push it, the air barely slows it.
+    b.vx += (mx * PHYS.pump + gust * PHYS.wind * 2) * dt;
+    b.vx *= 1 - PHYS.swingDrag * dt;
+    b.vy *= 1 - PHYS.swingDrag * dt;
+    // Against the rock, the feet push off it.
+    const side = Math.sign(mx);
+    if (Math.abs(mx) > 0.5 && side * b.vx < PHYS.kick && overlaps(b.x - side * 0.05, b.y, PHYS.hw, PHYS.hh - 0.1, (cx, cy) => solidAt(s, cx, cy))) b.vx = side * PHYS.kick;
+  } else {
+    const onIce = b.ground && !b.onPartner && charAt(M(), Math.floor(b.x), Math.floor(b.y + PHYS.hh + 0.05)) === '~';
+    // Dragged, the feet find no hold: as on ice.
+    const accel = (b.ground ? (onIce || b.dragged ? PHYS.ice : PHYS.accel) : PHYS.air) * dt;
+    // Running is relative to the air: a gust carries you along, against it you barely move.
+    const target = mx * PHYS.run + gust * PHYS.wind;
+    b.vx = b.vx < target ? Math.min(target, b.vx + accel) : Math.max(target, b.vx - accel);
+  }
+  // Jump off the ground; a moment after leaving it still counts. Not off the rope: on it, you swing or climb.
   b.coyote = b.ground ? PHYS.coyote : Math.max(0, b.coyote - dt);
-  const hanging = p.grab && b.y > p.y + 0.3 && Math.hypot(b.x - p.x, b.y - p.y) >= ropeFor(s.rope, b.y, p.y) - 0.08;
-  if (b.buffer > 0 && (b.coyote > 0 || (hanging && b.cool <= 0))) {
-    if (b.coyote <= 0) b.cool = PHYS.ropeJumpCool;
+  if (b.buffer > 0 && b.coyote > 0) {
     b.vy = -PHYS.jump;
     b.buffer = 0;
     b.coyote = 0;
@@ -373,6 +489,10 @@ export function step(s: TadyState, seat: number, body: Body, input: Input, dt: n
     // Pressed against the rock by the rope isn't stopping: keep the speed it had.
     [b.vx, b.vy] = [b.vx === 0 ? 0 : vx, b.vy === 0 && pull[1] > 0 ? 0 : vy];
     pushOut(s, b);
+  }
+  if (b.hanging) {
+    const v = Math.hypot(b.vx, b.vy);
+    if (v > PHYS.swingMax) [b.vx, b.vy] = [(b.vx * PHYS.swingMax) / v, (b.vy * PHYS.swingMax) / v];
   }
   b.peak = b.ground ? b.y : Math.min(b.peak, b.y);
   return b;
@@ -409,7 +529,7 @@ function backToCamp(s: TadyState): void {
   const spots = camp ? [-0.6, 0.6].map((dx) => [camp[0] + 0.5 + dx, camp[1]]) : ['a', 'b'].map((ch) => cellsWith(M(), ch)[0]).map(([cx, cy]) => [cx + 0.5, cy]);
   s.climbers.forEach((c, i) => {
     const [x, cy] = spots[i];
-    Object.assign(c, { x, y: cy + 1 - PHYS.hh, vx: 0, vy: 0, ground: true, grab: false, reel: 0, sync: c.sync + 1, at: s.time });
+    Object.assign(c, { x, y: cy + 1 - PHYS.hh, vx: 0, vy: 0, ground: true, grab: false, reel: 0, sync: c.sync + 1, at: s.time, stamina: 1, tired: false });
     c.peak = c.y;
   });
   s.rope = PHYS.rope;
@@ -422,7 +542,7 @@ function tick(state: TadyState, dtMs: number): TadyState {
   const dt = dtMs / 1000;
   s.time += dtMs;
 
-  // The rope: hauled in from a grip, climbed from below, paid out to whoever climbs above, or back to full length when nobody holds on.
+  // The rope: hauled in from a grip, climbed up or down from below, paid out to whoever climbs above, or back to full length when nobody holds on.
   const [a, b] = s.climbers;
   const dist = Math.hypot(a.x - b.x, a.y - b.y);
   let change = 0;
@@ -431,13 +551,22 @@ function tick(state: TadyState, dtMs: number): TadyState {
     [b, a],
   ]) {
     if (me.grab) change -= me.reel * PHYS.reel;
-    else if (other.grab && me.reel === 1 && me.y > other.y) change -= PHYS.climb;
+    else if (other.grab && me.y > other.y) change -= me.reel * PHYS.climb;
     else if (me.y < other.y - 0.2 && dist > s.rope) s.rope = Math.min(PHYS.rope, dist);
   }
   if (!a.grab && !b.grab) change = PHYS.relax;
   // Hauling a partner stuck against the rock doesn't take in more rope.
   s.rope = Math.max(PHYS.ropeMin, dist - 1, Math.min(PHYS.rope, s.rope + change * dt));
   s.rope = Math.min(PHYS.rope, s.rope);
+
+  // Grips tire, as the server counts them; a spent one lets go.
+  for (const [me, other] of [
+    [a, b],
+    [b, a],
+  ]) {
+    Object.assign(me, tire(me, me.grab, me.ground, me.grab && holding(me, other, ropeFor(s.rope, other.y, me.y)), dt, GRACE));
+    if (me.tired) me.grab = false;
+  }
 
   // Crumbling ledges: they go a moment after someone stands on them, and come back once nobody's in the way.
   for (const [cx, cy] of cellsWith(m, '%')) {
@@ -555,7 +684,7 @@ export const tady: GameDefinition<TadyState, TadyAction> = {
       players,
       climbers: ['a', 'b'].map((ch, i): Climber => {
         const { x, y } = start(ch);
-        return { x, y, vx: 0, vy: 0, ground: true, grab: false, reel: 0, face: i === 0 ? 1 : -1, sync: 0, at: 0, peak: y };
+        return { x, y, vx: 0, vy: 0, ground: true, grab: false, reel: 0, face: i === 0 ? 1 : -1, sync: 0, at: 0, peak: y, stamina: 1, tired: false };
       }),
       rope: PHYS.rope,
       time: 0,
@@ -586,8 +715,9 @@ export const tady: GameDefinition<TadyState, TadyAction> = {
     const c = s.climbers[seat];
     // A report from before the last snap: the device hasn't caught up yet.
     if (action.s !== c.sync) return state;
-    if (!believable(s, c, s.climbers[1 - seat], action)) {
+    if (!believable(s, c, s.climbers[1 - seat], action) || (action.h && c.tired)) {
       c.sync++;
+      if (c.tired) c.grab = false;
       return s;
     }
     Object.assign(c, { x: action.x, y: action.y, vx: action.vx, vy: action.vy, ground: action.g, grab: action.h, reel: action.r, face: action.f, at: s.time });
