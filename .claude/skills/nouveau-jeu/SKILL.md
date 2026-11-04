@@ -7,6 +7,8 @@ description: Ajouter un mini-jeu à Lalao de bout en bout (règles pures + tests
 
 Livrer un jeu **jouable de bout en bout et vérifié**, pas une scène 3D. L'ordre compte : les règles d'abord (testables sans écran), l'affichage ensuite.
 
+Si d'autres chats travaillent sur le projet, le jeu se fait dans son propre chantier : `scripts/worktree.sh <id>`, puis un nouveau chat dans la fenêtre qui s'ouvre (voir « Plusieurs chats en même temps » dans CLAUDE.md).
+
 ## 0. Cadrer (5 lignes, dans la réponse et pas dans un fichier)
 
 - **Promesse** : le plaisir du jeu en une phrase.

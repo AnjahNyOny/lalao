@@ -9,6 +9,7 @@
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
+import { createServer, type AddressInfo } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { games } from '@game/games';
@@ -17,7 +18,13 @@ import { scenarios } from './scenarios';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const OUT = path.join(ROOT, 'artifacts/verify');
-const PORT = 3199;
+/** Any free port, so that several worktrees (scripts/worktree.sh) can run verify at once. */
+const PORT = await new Promise<number>((resolve) => {
+  const probe = createServer().listen(0, () => {
+    const { port } = probe.address() as AddressInfo;
+    probe.close(() => resolve(port));
+  });
+});
 /** VERIFY_URL=https://lalao.anjahnyony.com plays against the deployed site instead of a local server. */
 const REMOTE = process.env.VERIFY_URL;
 const URL_BASE = REMOTE ? REMOTE.replace(/\/?$/, '/') : `http://localhost:${PORT}/`;

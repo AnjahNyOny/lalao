@@ -13,7 +13,7 @@ npm run verify               # tous les jeux
 npm run verify -- connect4   # un seul jeu
 ```
 
-`verify` compile le client, démarre le serveur sur le port 3199, ouvre Chrome (l'hôte en mobile 390×844, l'invité en desktop 1280×800), crée un salon, fait entrer les joueurs, joue une partie complète via `window.__lalao`, vérifie l'écran de résultat et la revanche, mesure que le canvas n'est pas vide et collecte les erreurs de console. Les lignes `PASS`/`FAIL` s'affichent, et le script sort en code 1 en cas d'échec.
+`verify` compile le client, démarre le serveur sur un port libre (plusieurs chantiers peuvent vérifier en même temps), ouvre Chrome (l'hôte en mobile 390×844, l'invité en desktop 1280×800), crée un salon, fait entrer les joueurs, joue une partie complète via `window.__lalao`, vérifie l'écran de résultat et la revanche, mesure que le canvas n'est pas vide et collecte les erreurs de console. Les lignes `PASS`/`FAIL` s'affichent, et le script sort en code 1 en cas d'échec.
 
 Chrome doit être installé. Sinon : `CHROME_PATH=/chemin/vers/chrome npm run verify`.
 

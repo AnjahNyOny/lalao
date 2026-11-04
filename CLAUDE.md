@@ -7,7 +7,8 @@ L'interface, les textes du jeu et la documentation sont en **français**. Le cod
 ## Commandes
 
 ```bash
-npm run dev          # serveur :3000 + Vite :5173 (exposé sur le Wi-Fi)
+npm run dev          # serveur :3000 + Vite :5173 (exposé sur le Wi-Fi) ; PORT=3001 npm run dev pour un 2e chantier
+scripts/worktree.sh <nom>   # nouveau chantier : ../game-<nom>, branche jeu/<nom>, nouvelle fenêtre VS Code
 npm test             # vitest : règles des jeux + salons
 npm run typecheck
 npm run verify       # build + vraie partie dans Chrome, captures mobile/desktop -> artifacts/verify/
@@ -47,6 +48,16 @@ Règles qui tiennent l'architecture :
 ## Ajouter un jeu
 
 Utiliser la skill `/nouveau-jeu`. Elle couvre les règles, les tests, le bot, la vue (2D par défaut), le thème, l'enregistrement et la vérification.
+
+## Plusieurs chats en même temps
+
+Chaque chantier (un nouveau jeu, une grosse reprise) a son dossier, sa branche et son chat. `scripts/worktree.sh <nom>` crée le dossier `../game-<nom>` (un worktree git) sur la branche `jeu/<nom>`, à partir de la branche du dossier principal, installe les dépendances et ouvre une nouvelle fenêtre VS Code. Le chat s'ouvre dans cette fenêtre : le hook Stop vérifie le dossier où le chat a été ouvert, il ne voit donc pas le travail en cours des autres.
+
+- Un chantier part du dernier commit : ce qui n'est pas commité dans le dossier principal n'y est pas.
+- Un chat ne modifie que les fichiers de son chantier, jamais ceux du dossier principal ni d'un autre chantier.
+- `verify` prend un port libre. Pour `npm run dev`, changer de port : `PORT=3001 npm run dev` (Vite prend de lui-même le port suivant).
+- Un seul Blender pour tous les chats : un seul chantier à la fois s'en sert. Les chemins donnés à Blender (le script `.py` exécuté, `export(...)`, `render_icons(...)`) sont ceux du chantier ; pour `exec`, passer `{'__file__': chemin}` dans les globals, sinon `miaraka_assets.py` relit les outils du dossier principal.
+- Le dossier principal sert à fusionner, à tout vérifier et à déployer. Un jeu fini et vérifié se commite dans son chantier, puis, depuis le dossier principal : `git merge jeu/<nom>`. Seuls les fichiers où chaque jeu s'enregistre peuvent entrer en conflit (`packages/games/src/index.ts`, `apps/client/src/games/index.ts`, `apps/client/src/styles.css`, `scripts/verify/scenarios.ts`) : garder les deux jeux. Relancer `npm run typecheck && npm test` et `npm run verify`, puis `git worktree remove ../game-<nom>` et `git branch -d jeu/<nom>`.
 
 ## Style visuel
 
