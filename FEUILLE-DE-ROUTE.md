@@ -8,7 +8,7 @@ Dernière mise à jour : 2026-11-04.
 
 | Chantier | Dossier | Branche | État |
 |---|---|---|---|
-| **Kalesa** : nouveau jeu (description à compléter) | `../game-kalesa` | `jeu/kalesa` | Démarré le 2026-11-04. À fusionner dès qu'il est fini. |
+| (aucun) | | | |
 
 ## Jeux finis
 
@@ -19,20 +19,19 @@ Dernière mise à jour : 2026-11-04.
 | Tsena | propriétés à Madagascar, 48 cases | 3D, modèles Blender |
 | Miaraka | coopératif à deux, en temps réel, 4 niveaux de Bemaraha à Kirindy | 3D, modèles Blender |
 | Tady | coopératif à deux encordés, escalade du Pic Boby, plus dur vers le sommet | pixel art |
+| Kalesa | course en temps réel, 2 à 4 joueurs : on dessine ses roues selon le terrain, sur trois routes de Madagascar | 3D, modèles Blender |
 
 ## Plateforme : ce qui est fait
 
 - Menu rétro arcade, un thème par jeu.
 - Bots à trois niveaux, solo hors ligne.
 - Options de partie et choix du pion dans le salon.
-- En ligne sur https://lalao.anjahnyony.com depuis le 2026-11-03. Version en ligne : à vérifier (`readlink /var/www/lalao/current` sur le VPS).
+- En ligne sur https://lalao.anjahnyony.com depuis le 2026-11-03. Version en ligne : `20261104-123344-a03cea4` (reprise de Tady), déployée le 2026-11-04, vérifiée en ligne (`verify:online`, les 5 jeux).
 - Plusieurs chats en même temps, un chantier par jeu (`scripts/worktree.sh`) : depuis le 2026-11-04.
 
 ## À faire et à décider
 
-- **`main` est resté au premier commit.** Tout le travail est sur `feat/menu-arcade-themes`. Tady est commité : on peut fusionner dans `main` quand on veut.
-- Pousser sur GitHub : les commits du 2026-11-04 n'y sont pas encore.
-- Déployer la reprise de Tady (`a03cea4`, 2026-11-04), puis Kalesa une fois fusionné.
+- Supprimer le chantier `../game-kalesa` (fusionné le 2026-11-04) quand son chat ne sert plus : `git worktree remove ../game-kalesa` et `git branch -d jeu/kalesa`.
 - Plus tard (décidé le 2026-11-02) : Capacitor (iOS, Android), Tauri (desktop), un téléphone qui fait serveur hôte.
 
 ## Idées pour la suite
@@ -42,7 +41,7 @@ Dernière mise à jour : 2026-11-04.
 ## Décisions
 
 - 2026-11-02 : le web d'abord (TypeScript, React Three Fiber, Node et ws). Godot et React Native sont écartés.
-- 2026-11-02 : jeux en 2D par défaut, chacun avec son style. La 3D, seulement sur demande (Tsena, Miaraka).
+- 2026-11-02 : jeux en 2D par défaut, chacun avec son style. La 3D, seulement sur demande (Tsena, Miaraka, Kalesa).
 - 2026-11-02 : menu principal en rétro arcade.
 - Toujours : un jeu original du genre demandé, jamais une copie. Tsena n'est pas le Monopoly, Tady n'est pas Chained Together.
 - 2026-11-03 : mise en ligne sur le VPS IONOS (nginx et PM2). On compile sur le Mac, jamais sur le VPS.
