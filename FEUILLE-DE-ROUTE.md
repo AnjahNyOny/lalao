@@ -26,7 +26,7 @@ Dernière mise à jour : 2026-11-04.
 - Menu rétro arcade, un thème par jeu.
 - Bots à trois niveaux, solo hors ligne.
 - Options de partie et choix du pion dans le salon.
-- En ligne sur https://lalao.anjahnyony.com depuis le 2026-11-03. Version en ligne : `20261104-123344-a03cea4` (reprise de Tady), déployée le 2026-11-04, vérifiée en ligne (`verify:online`, les 5 jeux).
+- En ligne sur https://lalao.anjahnyony.com depuis le 2026-11-03. Version en ligne : `20261104-151004-dcbc2f2` (Kalesa et la reprise de Tady), déployée le 2026-11-04, vérifiée en ligne (`verify:online`, les 6 jeux).
 - Plusieurs chats en même temps, un chantier par jeu (`scripts/worktree.sh`) : depuis le 2026-11-04.
 
 ## À faire et à décider
