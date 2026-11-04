@@ -17,4 +17,6 @@ export interface GameClient {
   View: ComponentType<GameViewProps>;
   /** For games with pieces: the picture the lobby shows for each one. */
   pieceImage?: (id: string) => string;
+  /** Extra entries for the in-game menu: each sends a game action. */
+  menu?: (view: unknown) => { label: string; hint?: string; action: unknown }[];
 }

@@ -184,14 +184,71 @@ function ResultBanner({ result, room, me }: { result: GameResult; room: RoomInfo
   );
 }
 
+/** In a game: start over (the host), the game's own entries, leave. */
+function GameMenu({ room, me, view, onClose }: { room: RoomInfo; me: PlayerId; view: unknown; onClose: () => void }) {
+  const [sure, setSure] = useState(false);
+  const extras = gameClients[room.gameId]?.menu?.(view) ?? [];
+  const isHost = room.hostId === me;
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [onClose]);
+  return (
+    <div className="game-menu-backdrop" onClick={onClose}>
+      <div className="game-menu" role="dialog" aria-label="Menu" onClick={(e) => e.stopPropagation()}>
+        <h2>Pause</h2>
+        <button className="primary" onClick={onClose}>
+          Reprendre
+        </button>
+        {extras.map((item) => (
+          <button
+            key={item.label}
+            title={item.hint}
+            onClick={() => {
+              connection.act(item.action);
+              onClose();
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+        {isHost ? (
+          <button
+            onClick={() => {
+              if (!sure) return setSure(true);
+              connection.start();
+              onClose();
+            }}
+          >
+            {sure ? 'Sûr ? Tout repart de zéro' : 'Recommencer la partie'}
+          </button>
+        ) : (
+          <p className="muted small">Seul l’hôte peut recommencer la partie.</p>
+        )}
+        <button onClick={() => connection.leave()}>Quitter le salon</button>
+      </div>
+    </div>
+  );
+}
+
 export function RoomScreen(props: { room: RoomInfo; me: PlayerId; game: { view: unknown; result: GameResult | null } | null; solo: boolean }) {
   const { room, me, game } = props;
   const client = gameClients[room.gameId];
+  const [menu, setMenu] = useState(false);
+  const playing = !!game && !game.result;
   return (
     <>
-      <button className="leave" onClick={() => connection.leave()} aria-label="Quitter le salon">
-        ✕
-      </button>
+      {playing ? (
+        <button className="leave" onClick={() => setMenu(true)} aria-label="Menu">
+          ☰
+        </button>
+      ) : (
+        <button className="leave" onClick={() => connection.leave()} aria-label="Quitter le salon">
+          ✕
+        </button>
+      )}
+      {playing && menu && <GameMenu room={room} me={me} view={game.view} onClose={() => setMenu(false)} />}
       {game && client ? (
         <>
           <ErrorBoundary

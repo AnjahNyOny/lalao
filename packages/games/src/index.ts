@@ -2,6 +2,7 @@ import type { GameRegistry } from '@game/core';
 import { connect4 } from './connect4';
 import { miaraka } from './miaraka';
 import { snakes } from './snakes';
+import { tady } from './tady';
 import { tsena } from './tsena';
 
 /** Every playable mini-game. Add new games here. */
@@ -10,4 +11,5 @@ export const games: GameRegistry = {
   [snakes.id]: snakes,
   [tsena.id]: tsena,
   [miaraka.id]: miaraka,
+  [tady.id]: tady,
 };

@@ -1,6 +1,7 @@
 import { LEVELS, levelSize, NEXT_MS, vanillaTotal, type MiarakaAction, type MiarakaState, type Role } from '@game/games/miaraka';
-import { memo, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import { ErrorBoundary, hasWebGL } from '../../ui/ErrorBoundary';
+import { Stick } from '../../ui/Stick';
 import type { GameViewProps } from '../types';
 import { useControls } from './controls';
 import { hintFor } from './hints';
@@ -58,46 +59,6 @@ function Minimap({ s, seat }: { s: MiarakaState; seat: number }) {
         <circle key={i} cx={a.x} cy={a.z} r={i === seat ? 0.9 : 0.75} fill={a.role === 'maki' ? tsingy.maki : tsingy.zebu} stroke="#fff" strokeWidth={0.25} />
       ))}
     </svg>
-  );
-}
-
-/** A thumb stick: drag from its centre. */
-function Stick({ onMove }: { onMove: (x: number, z: number) => void }) {
-  const base = useRef<HTMLDivElement>(null!);
-  const [knob, setKnob] = useState<[number, number]>([0, 0]);
-  const pointer = useRef<number | null>(null);
-  const move = (e: PointerEvent) => {
-    if (pointer.current !== e.pointerId) return;
-    const r = base.current.getBoundingClientRect();
-    const radius = r.width / 2;
-    let x = (e.clientX - r.left - radius) / radius;
-    let z = (e.clientY - r.top - radius) / radius;
-    const len = Math.hypot(x, z);
-    if (len > 1) [x, z] = [x / len, z / len];
-    setKnob([x, z]);
-    onMove(x, z);
-  };
-  const end = (e: PointerEvent) => {
-    if (pointer.current !== e.pointerId) return;
-    pointer.current = null;
-    setKnob([0, 0]);
-    onMove(0, 0);
-  };
-  return (
-    <div
-      ref={base}
-      className="miaraka-stick"
-      onPointerDown={(e) => {
-        pointer.current = e.pointerId;
-        base.current.setPointerCapture(e.pointerId);
-        move(e);
-      }}
-      onPointerMove={move}
-      onPointerUp={end}
-      onPointerCancel={end}
-    >
-      <span style={{ transform: `translate(${knob[0] * 40}%, ${knob[1] * 40}%)` }} />
-    </div>
   );
 }
 
@@ -177,7 +138,7 @@ export function MiarakaView({ view, me, room, act }: GameViewProps) {
       <Banner s={s} />
       {touch ? (
         <>
-          <Stick onMove={setStick} />
+          <Stick className="miaraka-stick" onMove={setStick} />
           <button
             className={`miaraka-action ${mine.role}`}
             onPointerDown={(e) => {

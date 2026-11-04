@@ -131,7 +131,11 @@ export class Room {
 
   start(by: PlayerId): void {
     this.requireHost(by);
-    if (this.status === 'playing') throw new RoomError('La partie est déjà en cours');
+    // Mid-game, the host may start over: the game in progress is dropped.
+    if (this.status === 'playing') {
+      this.stopLoop();
+      this.cancelBot();
+    }
     // Humans who left during the previous game don't get a seat in the rematch.
     for (let i = this.members.length - 1; i >= 0; i--) {
       const m = this.members[i];

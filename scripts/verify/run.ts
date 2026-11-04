@@ -236,6 +236,13 @@ async function verifyGame(browser: Browser, gameId: string): Promise<void> {
     report(stats.colors >= 8 && stats.dominant < 0.95, `écran de jeu non vide (${p.label})`, `${stats.colors} couleurs, dominante ${(stats.dominant * 100).toFixed(0)} %`);
   }
 
+  // The in-game menu opens with a real click, and closes again.
+  await host.page.click('button[aria-label="Menu"]');
+  await host.page.waitForSelector('.game-menu');
+  await shot(host, '3-menu');
+  await host.page.click('.game-menu button:has-text("Reprendre")');
+  report(!(await host.page.isVisible('.game-menu')), 'menu de jeu : ouvert puis refermé');
+
   let turns = 0;
   let result = null;
   // Real-time games send many small moves, quickly; turn-based ones wait for the animations.

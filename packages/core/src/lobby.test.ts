@@ -60,6 +60,24 @@ describe('Lobby', () => {
     expect(a.last('room')!.room.status).toBe('finished');
   });
 
+  it('lets the host start over in the middle of a game, and only the host', () => {
+    const lobby = new Lobby({ race });
+    const a = client(lobby);
+    const b = client(lobby);
+    a.session.receive({ t: 'create', name: 'Alice', gameId: 'race' });
+    b.session.receive({ t: 'join', code: a.last('welcome')!.code, name: 'Bob' });
+    a.session.receive({ t: 'start' });
+    const first = (a.last('game')!.view as { players: string[] }).players[0];
+    const mover = first === a.last('welcome')!.playerId ? a : b;
+    mover.session.receive({ t: 'action', action: { add: 1 } });
+    expect((a.last('game')!.view as { scores: number[] }).scores).toContain(1);
+    b.session.receive({ t: 'start' });
+    expect(b.last('error')!.message).toMatch(/hôte/);
+    a.session.receive({ t: 'start' });
+    expect((a.last('game')!.view as { scores: number[] }).scores).toEqual([0, 0]);
+    expect(a.last('room')!.room.status).toBe('playing');
+  });
+
   it('lets a player reconnect mid-game with their token', () => {
     const lobby = new Lobby({ race });
     const a = client(lobby);

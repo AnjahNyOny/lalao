@@ -25,7 +25,7 @@ export interface RoomInfo {
 export type ClientMessage =
   | { t: 'create'; name: string; gameId: string }
   | { t: 'join'; code: string; name: string; token?: string }
-  /** Host only: starts the game, or a rematch once finished. */
+  /** Host only: starts the game, a rematch once finished, or starts over mid-game. */
   | { t: 'start' }
   | { t: 'action'; action: unknown }
   /** Host only, in the lobby. */
