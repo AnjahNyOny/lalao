@@ -1,4 +1,7 @@
 import { Connect4View } from './connect4/Connect4View';
+import { carImage } from './kalesa/cars';
+import { KalesaView } from './kalesa/KalesaView';
+import { kalesaTheme } from './kalesa/theme';
 import { MiarakaView } from './miaraka/MiarakaView';
 import { miarakaTheme } from './miaraka/theme';
 import { connect4Theme } from './connect4/theme';
@@ -33,4 +36,6 @@ export const gameClients: Record<string, GameClient> = {
       return [{ label: 'Retour au dernier camp', hint: s.camp ? 'Vous repartez tous les deux du camp.' : 'Vous repartez tous les deux du pied de la montagne.', action: { type: 'camp' } }];
     },
   },
+  // The cars, rendered in Blender on plain round wheels.
+  kalesa: { emoji: '🚕', theme: kalesaTheme, View: KalesaView, pieceImage: carImage },
 };

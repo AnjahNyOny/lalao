@@ -182,6 +182,35 @@ describe('bots', () => {
     }
   });
 
+  it('acts in a real-time game too, though the state changes every tick while it waits', () => {
+    // Everyone presses once; the game ends when all have.
+    const live: GameDefinition<{ players: string[]; t: number; pressed: string[] }, { press: 1 }> = {
+      id: 'live',
+      name: 'Live',
+      minPlayers: 2,
+      maxPlayers: 2,
+      setup: (players) => ({ players, t: 0, pressed: [] }),
+      validate: (s, a, by): a is { press: 1 } => !s.pressed.includes(by) && (a as { press?: number })?.press === 1,
+      apply: (s, _a, by) => ({ ...s, pressed: [...s.pressed, by] }),
+      tick: (s, dt) => ({ ...s, t: s.t + dt }),
+      result: (s) => (s.pressed.length === s.players.length ? { kind: 'win', winners: [s.pressed[0]] } : null),
+      bot: (s, me) => (s.pressed.includes(me) ? null : { press: 1 }),
+    };
+    vi.useFakeTimers();
+    // Slower than a tick (50 ms).
+    const lobby = new Lobby({ live }, 60_000, { botDelayMs: [120, 120] });
+    const host = client(lobby);
+    host.session.receive({ t: 'create', name: 'Alice', gameId: 'live' });
+    host.session.receive({ t: 'addBot', level: 'hard' });
+    host.session.receive({ t: 'start' });
+    vi.advanceTimersByTime(500);
+    const bot = host.last('room')!.room.players[1].id;
+    expect((host.last('game')!.view as { pressed: string[] }).pressed).toEqual([bot]);
+    host.session.receive({ t: 'action', action: { press: 1 } });
+    vi.advanceTimersByTime(50);
+    expect(host.last('game')!.result).toEqual({ kind: 'win', winners: [bot] });
+  });
+
   it('does not keep a room alive with only bots in it', () => {
     const { lobby, host } = setup();
     host.session.receive({ t: 'addBot', level: 'easy' });
