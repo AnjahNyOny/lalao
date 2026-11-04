@@ -267,8 +267,9 @@ export class Room {
     this.botTimer = setTimeout(() => {
       this.botTimer = null;
       if (this.status !== 'playing') return;
-      // Recompute: the state may have moved on while we waited.
-      const action = version === this.version ? this.botAction(bot) : null;
+      // Recompute: the state may have moved on while we waited. A real-time
+      // game moves on every tick, so there the bot just acts on the state as it is now.
+      const action = version === this.version || this.game.tick ? this.botAction(bot) : null;
       if (action === null) return this.scheduleBot();
       try {
         this.action(bot.id, action);

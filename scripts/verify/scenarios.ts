@@ -1,5 +1,6 @@
 import type { PlayerId } from '@game/core';
 import { COLS, dropRow, type Connect4State } from '@game/games/connect4';
+import { kalesa, type KalesaState } from '@game/games/kalesa';
 import type { MiarakaState } from '@game/games/miaraka';
 // Not part of the package's exports: the level's solution is only for tests and verify.
 import { nextAction, type Progress } from '../../packages/games/src/miaraka/solution';
@@ -53,6 +54,13 @@ export const scenarios: Record<string, Chooser> = {
     // A new game: start the route again.
     if (s.time < 1000 && tadyPlans.some((p) => p.step > 2)) tadyPlans = [{ step: 0 }, { step: 0 }];
     return climb(s, seat, tadyPlans, 0.5);
+  },
+
+  // Real time: draws the wheel the next stretch wants, as the hard bot would.
+  kalesa: (view, me) => {
+    const s = view as KalesaState;
+    if (s.over || !s.players.includes(me)) return null;
+    return kalesa.bot!(s, me, 'hard', Math.random);
   },
 
   tsena: (view, me) => {

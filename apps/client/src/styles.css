@@ -2038,3 +2038,380 @@ input::placeholder {
   color: var(--accent-ink);
   box-shadow: 0 5px 0 var(--accent-shadow);
 }
+
+/* ---------- Kalesa (a race on drawn wheels, 3D) ---------- */
+
+/* Lobby: red earth at dusk, the white dashes of a road. */
+[data-theme='kalesa'] body {
+  background-color: #3a1f16;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 34px, rgba(255, 245, 230, 0.16) 34px 70px),
+    linear-gradient(180deg, #6a3520 0%, #3a1f16 58%, #2a160f 100%);
+  background-size:
+    100% 6px,
+    100% 100%;
+  background-position:
+    0 calc(100% - 48px),
+    0 0;
+  background-repeat: no-repeat;
+}
+
+.kalesa {
+  display: flex;
+  flex-direction: column;
+}
+
+.kalesa-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.kalesa-top {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 62px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.kalesa-standings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kalesa-standings li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: calc(50% - 3px);
+  padding: 1px 8px 1px 3px;
+  background: var(--card);
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--card-shadow);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.kalesa-standings li.mine {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.kalesa-standings b {
+  min-width: 1.1em;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.kalesa-standings img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex: none;
+}
+
+.kalesa-standings span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kalesa-standings em {
+  font-style: normal;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.kalesa-mini-wheel {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.kalesa-strip {
+  width: 100%;
+  height: 24px;
+  filter: drop-shadow(0 2px 0 var(--btn-shadow));
+}
+
+.kalesa-controls {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: var(--card-border);
+}
+
+.kalesa-hint {
+  box-sizing: border-box;
+  width: min(100%, 480px);
+  /* Always the same height: a hint that wraps must not resize the 3D view above it. */
+  height: 82px;
+  overflow: hidden;
+  padding: 6px 10px;
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.kalesa-here {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kalesa-here strong {
+  white-space: nowrap;
+}
+
+.kalesa-terrain {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 4px;
+  border: 2px solid var(--ink);
+}
+
+.kalesa-grip {
+  flex: 1;
+  height: 10px;
+  min-width: 40px;
+  overflow: hidden;
+  background: var(--input-bg);
+  border-radius: 5px;
+}
+
+.kalesa-grip span {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease-out;
+}
+
+.kalesa-pct {
+  min-width: 3.2em;
+  text-align: right;
+  font-weight: 700;
+}
+
+.kalesa-next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  margin-top: 4px;
+}
+
+.kalesa-next-wheel {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  padding: 2px;
+  background: var(--input-bg);
+  border-radius: 8px;
+}
+
+.kalesa-pad {
+  position: relative;
+  width: min(100%, 33vh, 340px);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  touch-action: none;
+}
+
+.kalesa-pad canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.kalesa-pad.off canvas {
+  filter: grayscale(0.7) brightness(0.85);
+  cursor: default;
+}
+
+.kalesa-pad.urge {
+  border-color: var(--accent);
+  animation: kalesa-urge 0.9s ease-in-out infinite;
+}
+
+@keyframes kalesa-urge {
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+.kalesa-pad-label {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 4px 10px;
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}
+
+.kalesa-pad-refused {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: kalesa-shake 0.35s ease-out;
+}
+
+@keyframes kalesa-shake {
+  0%,
+  100% {
+    transform: translateX(-50%);
+  }
+  25% {
+    transform: translateX(calc(-50% - 6px));
+  }
+  75% {
+    transform: translateX(calc(-50% + 6px));
+  }
+}
+
+/* 3, 2, 1, andao!: scaled down into place, never faded in. */
+.kalesa-countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: min(26vmin, 180px);
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow:
+    0 6px 0 var(--btn-shadow),
+    0 0 24px var(--btn-shadow);
+  pointer-events: none;
+  animation: kalesa-count 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes kalesa-count {
+  from {
+    transform: scale(1.7);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.kalesa-finish {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px 16px;
+  background: var(--card);
+  border: var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+  text-align: center;
+  pointer-events: none;
+}
+
+.kalesa-finish strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.kalesa-finish span,
+.kalesa-watch {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.kalesa-watch {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  background: var(--card);
+  border-radius: 999px;
+}
+
+.kalesa-nogl {
+  position: absolute;
+  inset: 40% 16px auto;
+  margin: 0;
+  text-align: center;
+}
+
+/* Wider than tall: the road everywhere, the pad in the corner under the right hand. */
+@media (orientation: landscape) {
+  .kalesa-view {
+    position: absolute;
+    inset: 0;
+  }
+
+  .kalesa-top {
+    right: auto;
+    width: min(620px, calc(100vw - 80px));
+  }
+
+  .kalesa-controls {
+    position: fixed;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(46vh, 340px);
+    padding: 0;
+    background: none;
+    border: none;
+  }
+
+  .kalesa-pad {
+    width: 100%;
+  }
+
+  .kalesa-finish {
+    bottom: auto;
+    top: 96px;
+  }
+}
